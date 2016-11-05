@@ -13,7 +13,8 @@ class shutit_openshift_cluster(ShutItModule):
 		gui = shutit.cfg[self.module_id]['gui']
 		memory = shutit.cfg[self.module_id]['memory']
 		home_dir = os.path.expanduser('~')
-		machines = ('master1','master2','master3','etcd1','etcd2','etcd3','node1','node2','lb')
+		machine_names = ('master1','master2','master3','etcd1','etcd2','etcd3','node1','node2','openshiftcluster')
+		machines = ('master1.vagrant.test','master2.vagrant.test','master3.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test','node2.vagrant.test','openshift-cluster.vagrant.test')
 		module_name = 'shutit_openshift_cluster_' + ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(6))
 		# TODO: needs vagrant 1.8.6+
 		shutit.send('rm -rf ' + home_dir + '/' + module_name + ' && mkdir -p ' + home_dir + '/' + module_name + ' && cd ~/' + module_name)
@@ -30,24 +31,28 @@ Vagrant.configure("2") do |config|
 
   config.vm.define "master1" do |master1|    
     master1.vm.box = ''' + '"' + vagrant_image + '"' + '''
+    master1.vm.network "private_network", ip: "192.168.2.2"
     master1.vm.hostname = "master1.vagrant.test"
-    #master1.vm.network "private_network", ip: "192.168.2.2"
+    master1.vm.provider :virtualbox do |v|
+      v.customize ["modifyvm", :id, "--memory", "2048"]
+      v.customize ["modifyvm", :id, "--cpus", "4"]
+    end
   end
   config.vm.define "master2" do |master2|    
     master2.vm.box = ''' + '"' + vagrant_image + '"' + '''
+    master2.vm.network "private_network", ip: "192.168.2.3"
     master2.vm.hostname = "master2.vagrant.test"
-    #master2.vm.network "private_network", ip: "192.168.2.3"
   end
   config.vm.define "master3" do |master3|    
     master3.vm.box = ''' + '"' + vagrant_image + '"' + '''
+    master3.vm.network "private_network", ip: "192.168.2.4"
     master3.vm.hostname = "master3.vagrant.test"
-    #master3.vm.network "private_network", ip: "192.168.2.4"
   end
 
-  config.vm.define "lb" do |lb|
-    lb.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    #lb.vm.network :private_network, ip: "192.168.2.13"
-    lb.vm.hostname = "lb.vagrant.test"
+  config.vm.define "openshiftcluster" do |openshiftcluster|
+    openshiftcluster.vm.box = ''' + '"' + vagrant_image + '"' + '''
+    openshiftcluster.vm.network :private_network, ip: "192.168.2.13"
+    openshiftcluster.vm.hostname = "openshift-cluster.vagrant.test"
   end
 
   config.vm.define "etcd1" do |etcd1|
@@ -68,18 +73,18 @@ Vagrant.configure("2") do |config|
 
   config.vm.define "node1" do |node1|
     node1.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    #node1.vm.network :private_network, ip: "192.168.2.24"
+    node1.vm.network :private_network, ip: "192.168.2.24"
     node1.vm.hostname = "node1.vagrant.test"
   end
   config.vm.define "node2" do |node2|
     node2.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    #node2.vm.network :private_network, ip: "192.168.2.25"
+    node2.vm.network :private_network, ip: "192.168.2.25"
     node2.vm.hostname = "node2.vagrant.test"
   end
 end''')
 		password = shutit.get_env_pass()
 		shutit.multisend('vagrant up --provider virtualbox',{'assword':password},timeout=99999)
-		for machine in machines:
+		for machine in machine_names:
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
 			shutit.install('xterm')
@@ -153,7 +158,7 @@ etcd3.vagrant.test
 
 # Specify load balancer host
 [lb]
-lb.vagrant.test
+openshift-cluster.vagrant.test
 
 # host group for nodes, includes region info
 [nodes]
@@ -164,11 +169,15 @@ node2.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'west'}"
 			# Set up ansible.
 			shutit.multisend('ssh-copy-id root@' + machine,{'ontinue connecting':'yes','assword':'origin'})
 			shutit.multisend('ssh-copy-id root@' + machine + '.vagrant.test',{'ontinue connecting':'yes','assword':'origin'})
-		shutit.pause_point('ansible-playbook ~/openshift-ansible/playbooks/byo/config.yml')
 		shutit.multisend('ansible-playbook ~/openshift-ansible/playbooks/byo/config.yml',{'ontinue connecting':'yes'})
+		shutit.multisend('ansible-playbook ~/openshift-ansible/playbooks/byo/config.yml',{'ontinue connecting':'yes'})
+		shutit.multisend('ansible-playbook ~/openshift-ansible/playbooks/byo/config.yml',{'ontinue connecting':'yes'})
+		shutit.pause_point('Are we done?')
+		shutit.send('git clone https://github.com/openshift/origin')
+		shutit.send('cd examples')
+		# TODO: https://github.com/openshift/origin/tree/master/examples/data-population
 		shutit.logout()
 		shutit.logout()
-		shutit.pause_point('')
 
 		return True
 
