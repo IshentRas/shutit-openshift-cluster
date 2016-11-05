@@ -1,5 +1,7 @@
 # shutit-openshift-cluster
 
+See here: TODO MEDIUM_LINK
+
 ```
 [install pip]
 [sudo] pip install shutit
