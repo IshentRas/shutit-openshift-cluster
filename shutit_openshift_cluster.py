@@ -213,7 +213,7 @@ node2.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'west'}"
 
 def module():
 	return shutit_openshift_cluster(
-		'git.shutit_openshift_cluster.shutit_openshift_cluster', 857091783.0001,   
+		'tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster', 857091783.0001,
 		description='',
 		maintainer='',
 		delivery_methods=['bash'],

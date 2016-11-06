@@ -7,5 +7,5 @@
 ###############################################################################
 # When this module is the one being built, which modules should be built along with it by default?
 # This feeds into automated testing of each module.
-[git.shutit_openshift_cluster.shutit_openshift_cluster]
+[tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster]
 shutit.core.module.build:yes
