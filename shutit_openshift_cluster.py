@@ -42,11 +42,19 @@ Vagrant.configure("2") do |config|
     master2.vm.box = ''' + '"' + vagrant_image + '"' + '''
     master2.vm.network "private_network", ip: "192.168.2.3"
     master2.vm.hostname = "master2.vagrant.test"
+    master2.vm.provider :virtualbox do |v|
+      v.customize ["modifyvm", :id, "--memory", "1024"]
+      v.customize ["modifyvm", :id, "--cpus", "2"]
+    end
   end
   config.vm.define "master3" do |master3|    
     master3.vm.box = ''' + '"' + vagrant_image + '"' + '''
     master3.vm.network "private_network", ip: "192.168.2.4"
     master3.vm.hostname = "master3.vagrant.test"
+    master3.vm.provider :virtualbox do |v|
+      v.customize ["modifyvm", :id, "--memory", "1024"]
+      v.customize ["modifyvm", :id, "--cpus", "2"]
+    end
   end
 
   config.vm.define "openshiftcluster" do |openshiftcluster|
