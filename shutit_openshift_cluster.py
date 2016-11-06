@@ -87,6 +87,10 @@ end''')
 		for machine in machine_names:
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
+			# See: https://access.redhat.com/articles/1320623
+			shutit.send('rm -fr /var/cache/yum/*')
+			shutit.send('yum clean all') 
+			shutit.send('yum update -y') 
 			shutit.install('xterm')
 			shutit.install('net-tools')
 			shutit.send('''sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config''')
