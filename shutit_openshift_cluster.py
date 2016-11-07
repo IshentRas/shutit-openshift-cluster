@@ -117,7 +117,7 @@ end''')
 		shutit.install('git')
 		shutit.install('ansible')
 		shutit.install('pyOpenSSL')
-		shutit.send('git clone https://github.com/openshift/openshift-ansible -b release-1.3')
+		shutit.send('git clone --depth=1 https://github.com/openshift/openshift-ansible -b release-1.3')
 		shutit.multisend('ssh-keygen',{'Enter file':'','Enter passphrase':'','Enter same pass':''})
 		shutit.send_file('/etc/ansible/hosts','''# Create an OSEv3 group that contains the master, nodes, etcd, and lb groups.
 # The lb group lets Ansible configure HAProxy as the load balancing solution.
@@ -181,13 +181,22 @@ node2.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'west'}"
 			# Set up ansible.
 			shutit.multisend('ssh-copy-id root@' + machine,{'ontinue connecting':'yes','assword':'origin'})
 			shutit.multisend('ssh-copy-id root@' + machine + '.vagrant.test',{'ontinue connecting':'yes','assword':'origin'})
-		shutit.multisend('ansible-playbook ~/openshift-ansible/playbooks/byo/config.yml',{'ontinue connecting':'yes'})
-		shutit.multisend('ansible-playbook ~/openshift-ansible/playbooks/byo/config.yml',{'ontinue connecting':'yes'})
-		shutit.multisend('ansible-playbook ~/openshift-ansible/playbooks/byo/config.yml',{'ontinue connecting':'yes'})
-		shutit.pause_point('Are we done?')
-		shutit.send('git clone https://github.com/openshift/origin')
-		shutit.send('cd examples')
+		while True:
+			shutit.multisend('ansible-playbook ~/openshift-ansible/playbooks/byo/config.yml',{'ontinue connecting':'yes'})
+			if shutit.send_and_match_output('oc get nodes','.*node1.vagrant.test     Ready.*'):
+				break
+		# Need to set masters as schedulable (why? - ansible seems to un-schedule them)
+		shutit.send('oadm manage-node master1.vagrant.test --schedulable')
+		shutit.send('oadm manage-node master2.vagrant.test --schedulable')
+		shutit.send('oadm manage-node master3.vagrant.test --schedulable')
+		shutit.send('git clone --depth=1 https://github.com/openshift/origin')
+		shutit.send('cd origin/examples')
 		# TODO: https://github.com/openshift/origin/tree/master/examples/data-population
+		shutit.send('cd data-population')
+		shutit.send('ln -s /etc/origin openshift.local.config')
+		shutit.send("""sed -i 's/10.0.2.15/openshift-cluster/g' common.sh""")
+		shutit.send('./populate.sh')
+		shutit.pause_point('Are we done?')
 		shutit.logout()
 		shutit.logout()
 
