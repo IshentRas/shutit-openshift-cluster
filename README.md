@@ -1,6 +1,6 @@
 # shutit-openshift-cluster
 
-See [![here][(https://asciinema.org/a/91801.png)](https://asciinema.org/a/91801)
+See [![here][(https://asciinema.org/a/91801.png)](https://asciinema.org/a/91801)]
 
 To Run:
 
