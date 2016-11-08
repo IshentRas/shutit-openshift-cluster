@@ -117,6 +117,7 @@ end''')
 		shutit.install('git')
 		shutit.install('ansible')
 		shutit.install('pyOpenSSL')
+		shutit.install('etcd') # For the client
 		shutit.send('git clone --depth=1 https://github.com/openshift/openshift-ansible -b release-1.3')
 		shutit.multisend('ssh-keygen',{'Enter file':'','Enter passphrase':'','Enter same pass':''})
 		shutit.send_file('/etc/ansible/hosts','''# Create an OSEv3 group that contains the master, nodes, etcd, and lb groups.
@@ -189,14 +190,16 @@ node2.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'west'}"
 		shutit.send('oadm manage-node master1.vagrant.test --schedulable')
 		shutit.send('oadm manage-node master2.vagrant.test --schedulable')
 		shutit.send('oadm manage-node master3.vagrant.test --schedulable')
+		# List the etcd members
+		shutit.send('etcdctl --endpoints https://192.168.2.14:2379,https://192.168.2.15:2379,https://192.168.2.16:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list')
 		shutit.send('git clone --depth=1 https://github.com/openshift/origin')
 		shutit.send('cd origin/examples')
 		# TODO: https://github.com/openshift/origin/tree/master/examples/data-population
 		shutit.send('cd data-population')
 		shutit.send('ln -s /etc/origin openshift.local.config')
 		shutit.send("""sed -i 's/10.0.2.15/openshift-cluster/g' common.sh""")
-		shutit.send('./populate.sh')
-		shutit.pause_point('Are we done?')
+		#shutit.send('./populate.sh')
+		shutit.pause_point('Populate without limits or quotas, correct project bug')
 		shutit.logout()
 		shutit.logout()
 
@@ -238,5 +241,5 @@ def module():
 		description='',
 		maintainer='',
 		delivery_methods=['bash'],
-		depends=['shutit.tk.setup','shutit-library.virtualbox.virtualbox.virtualbox','tk.shutit.vagrant.vagrant.vagrant']
+		depends=['shutit.tk.setup','shutit-library.virtualization.virtualization.virtualization','tk.shutit.vagrant.vagrant.vagrant']
 	)
