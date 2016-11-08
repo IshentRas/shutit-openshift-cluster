@@ -13,8 +13,8 @@ class shutit_openshift_cluster(ShutItModule):
 		gui = shutit.cfg[self.module_id]['gui']
 		memory = shutit.cfg[self.module_id]['memory']
 		home_dir = os.path.expanduser('~')
-		machine_names = ('master1','master2','master3','etcd1','etcd2','etcd3','node1','node2','openshiftcluster')
-		machines = ('master1.vagrant.test','master2.vagrant.test','master3.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test','node2.vagrant.test','openshift-cluster.vagrant.test')
+		machine_names = ('master1','master2','master3','etcd1','etcd2','etcd3','node1','node2','openshiftcluster','etcd4','etcd5','etcd6')
+		machines = ('master1.vagrant.test','master2.vagrant.test','master3.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test','node2.vagrant.test','openshift-cluster.vagrant.test','etcd4.vagrant.test','etcd5.vagrant.test','etcd6.vagrant.test')
 		module_name = 'shutit_openshift_cluster_' + ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(6))
 		# TODO: needs vagrant 1.8.6+
 		shutit.send('rm -rf ' + home_dir + '/' + module_name + ' && mkdir -p ' + home_dir + '/' + module_name + ' && cd ~/' + module_name)
@@ -43,18 +43,11 @@ Vagrant.configure("2") do |config|
     master2.vm.network "private_network", ip: "192.168.2.3"
     master2.vm.hostname = "master2.vagrant.test"
     master2.vm.provider :virtualbox do |v|
-      v.customize ["modifyvm", :id, "--memory", "1024"]
-      v.customize ["modifyvm", :id, "--cpus", "2"]
-    end
   end
   config.vm.define "master3" do |master3|    
     master3.vm.box = ''' + '"' + vagrant_image + '"' + '''
     master3.vm.network "private_network", ip: "192.168.2.4"
     master3.vm.hostname = "master3.vagrant.test"
-    master3.vm.provider :virtualbox do |v|
-      v.customize ["modifyvm", :id, "--memory", "1024"]
-      v.customize ["modifyvm", :id, "--cpus", "2"]
-    end
   end
 
   config.vm.define "openshiftcluster" do |openshiftcluster|
@@ -77,6 +70,21 @@ Vagrant.configure("2") do |config|
     etcd3.vm.box = ''' + '"' + vagrant_image + '"' + '''
     etcd3.vm.network :private_network, ip: "192.168.2.16"
     etcd3.vm.hostname = "etcd3.vagrant.test"
+  end
+  config.vm.define "etcd4" do |etcd4|
+    etcd4.vm.box = ''' + '"' + vagrant_image + '"' + '''
+    etcd4.vm.network :private_network, ip: "192.168.2.17"
+    etcd4.vm.hostname = "etcd4.vagrant.test"
+  end
+  config.vm.define "etcd5" do |etcd5|
+    etcd5.vm.box = ''' + '"' + vagrant_image + '"' + '''
+    etcd5.vm.network :private_network, ip: "192.168.2.18"
+    etcd5.vm.hostname = "etcd5.vagrant.test"
+  end
+  config.vm.define "etcd6" do |etcd6|
+    etcd6.vm.box = ''' + '"' + vagrant_image + '"' + '''
+    etcd6.vm.network :private_network, ip: "192.168.2.19"
+    etcd6.vm.hostname = "etcd6.vagrant.test"
   end
 
   config.vm.define "node1" do |node1|
@@ -198,8 +206,8 @@ node2.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'west'}"
 		shutit.send('cd data-population')
 		shutit.send('ln -s /etc/origin openshift.local.config')
 		shutit.send("""sed -i 's/10.0.2.15/openshift-cluster/g' common.sh""")
-		#shutit.send('./populate.sh')
-		shutit.pause_point('Populate without limits or quotas, correct project bug')
+		shutit.send('./populate.sh')
+		shutit.pause_point('Migrate etcd....')
 		shutit.logout()
 		shutit.logout()
 
