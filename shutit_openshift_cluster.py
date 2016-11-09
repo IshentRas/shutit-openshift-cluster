@@ -42,7 +42,6 @@ Vagrant.configure("2") do |config|
     master2.vm.box = ''' + '"' + vagrant_image + '"' + '''
     master2.vm.network "private_network", ip: "192.168.2.3"
     master2.vm.hostname = "master2.vagrant.test"
-    master2.vm.provider :virtualbox do |v|
   end
   config.vm.define "master3" do |master3|    
     master3.vm.box = ''' + '"' + vagrant_image + '"' + '''
@@ -220,7 +219,6 @@ node2.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'west'}"
 		shutit.get_config(self.module_id,'gui',default='false')
 		#shutit.get_config(self.module_id,'memory',default='1024')
 		shutit.get_config(self.module_id,'memory',default='512')
-
 		return True
 
 	def test(self, shutit):
