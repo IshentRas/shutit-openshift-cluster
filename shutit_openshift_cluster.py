@@ -111,6 +111,70 @@ end''')
 			shutit.send(r"""sed -i 's/127.0.0.1\t\(.*\).vagrant.test.*/""" + ip_addr + r"""\t\1.vagrant.test\t\1/' /etc/hosts""")
 			shutit.install('epel-release')
 			shutit.install('chef')
+			shutit.install('git clone https://github.com/IshentRas/cookbook-openshift3')
+			shutit.send('''ocp_cluster_environment.json''','''{
+  "name": "cluster_native",
+  "description": "",
+  "cookbook_versions": {
+                                      },
+  "json_class": "Chef::Environment",
+  "chef_type": "environment",
+  "default_attributes": {
+
+  },
+  "override_attributes": {
+    "cookbook-openshift3": {
+      "openshift_HA": true,
+      "openshift_cluster_name": "openshift-cluster.vagrant.test",
+      "openshift_master_cluster_vip": "192.168.1.13",
+      "master_servers": [
+        {
+          "fqdn": "master1.vagrant.test",
+          "ipaddress": "192.168.1.2"
+        },
+        {
+          "fqdn": "master2.vagrant.test",
+          "ipaddress": "192.168.1.3"
+        }
+      ],
+      "master_peers": [
+        {
+          "fqdn": "master2.vagrant.test",
+          "ipaddress": "192.168.1.3"
+        }
+      ],
+      "etcd_servers": [
+        {
+          "fqdn": "etcd1.vagrant.test",
+          "ipaddress": "192.168.1.14"
+        },
+        {
+          "fqdn": "etcd2.vagrant.test",
+          "ipaddress": "192.168.1.15"
+        },
+       {
+          "fqdn": "etcd3.vagrant.test",
+          "ipaddress": "192.168.1.16"
+        }
+      ],
+      "node_servers": [
+        {
+          "fqdn": "node1.vagrant.test",
+          "ipaddress": "192.168.1.24"
+        },
+        {
+          "fqdn": "master1.vagrant.test",
+          "ipaddress": "192.168.1.3"
+        },
+        {
+          "fqdn": "master2.vagrant.test",
+          "ipaddress": "192.168.1.3"
+        },
+      ],
+    }
+  }
+}''')
+			shutit.pause_point('chef-client -z -E ocp_cluster_environment.json --runlist cookbook-openshift3')
 			shutit.logout()
 			shutit.logout()
 
