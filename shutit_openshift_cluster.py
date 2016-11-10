@@ -13,8 +13,8 @@ class shutit_openshift_cluster(ShutItModule):
 		gui = shutit.cfg[self.module_id]['gui']
 		memory = shutit.cfg[self.module_id]['memory']
 		home_dir = os.path.expanduser('~')
-		machine_names = ('master1','master2','master3','etcd1','etcd2','etcd3','node1','node2','openshiftcluster','etcd4','etcd5','etcd6')
-		machines = ('master1.vagrant.test','master2.vagrant.test','master3.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test','node2.vagrant.test','openshift-cluster.vagrant.test','etcd4.vagrant.test','etcd5.vagrant.test','etcd6.vagrant.test')
+		machine_names = ('master1','master2','etcd1','etcd2','etcd3','node1','openshiftcluster','etcd4','etcd5','etcd6')
+		machines = ('master1.vagrant.test','master2.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test','openshift-cluster.vagrant.test','etcd4.vagrant.test','etcd5.vagrant.test','etcd6.vagrant.test')
 		module_name = 'shutit_openshift_cluster_' + ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(6))
 		# TODO: needs vagrant 1.8.6+
 		shutit.send('rm -rf ' + home_dir + '/' + module_name + ' && mkdir -p ' + home_dir + '/' + module_name + ' && cd ~/' + module_name)
@@ -25,7 +25,9 @@ class shutit_openshift_cluster(ShutItModule):
 Vagrant.configure("2") do |config|
   config.landrush.enabled = true
   config.vm.provider "virtualbox" do |vb|
-    vb.gui = ''' + gui + '''
+    vb.memory = "''' + memory + '''"
+  end
+  config.vm.provider "libvirt" do |vb|
     vb.memory = "''' + memory + '''"
   end
 
@@ -35,18 +37,13 @@ Vagrant.configure("2") do |config|
     master1.vm.hostname = "master1.vagrant.test"
     master1.vm.provider :virtualbox do |v|
       v.customize ["modifyvm", :id, "--memory", "2048"]
-      v.customize ["modifyvm", :id, "--cpus", "4"]
+      v.customize ["modifyvm", :id, "--cpus", "2"]
     end
   end
   config.vm.define "master2" do |master2|    
     master2.vm.box = ''' + '"' + vagrant_image + '"' + '''
     master2.vm.network "private_network", ip: "192.168.2.3"
     master2.vm.hostname = "master2.vagrant.test"
-  end
-  config.vm.define "master3" do |master3|    
-    master3.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    master3.vm.network "private_network", ip: "192.168.2.4"
-    master3.vm.hostname = "master3.vagrant.test"
   end
 
   config.vm.define "openshiftcluster" do |openshiftcluster|
@@ -91,13 +88,9 @@ Vagrant.configure("2") do |config|
     node1.vm.network :private_network, ip: "192.168.2.24"
     node1.vm.hostname = "node1.vagrant.test"
   end
-  config.vm.define "node2" do |node2|
-    node2.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    node2.vm.network :private_network, ip: "192.168.2.25"
-    node2.vm.hostname = "node2.vagrant.test"
-  end
 end''')
 		password = shutit.get_env_pass()
+		# TODO: provider
 		shutit.multisend('vagrant up --provider virtualbox',{'assword':password},timeout=99999)
 		for machine in machine_names:
 			shutit.login(command='vagrant ssh ' + machine)
@@ -168,7 +161,6 @@ openshift_clock_enabled=true
 [masters]
 master1.vagrant.test
 master2.vagrant.test
-master3.vagrant.test
 
 # host group for etcd
 [etcd]
@@ -182,9 +174,8 @@ openshift-cluster.vagrant.test
 
 # host group for nodes, includes region info
 [nodes]
-master[1:3].vagrant.test openshift_node_labels="{'region': 'infra', 'zone': 'default'}"
-node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
-node2.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'west'}"''')
+master[1:2].vagrant.test openshift_node_labels="{'region': 'infra', 'zone': 'default'}"
+node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"''')
 		for machine in machines:
 			# Set up ansible.
 			shutit.multisend('ssh-copy-id root@' + machine,{'ontinue connecting':'yes','assword':'origin'})
@@ -196,7 +187,6 @@ node2.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'west'}"
 		# Need to set masters as schedulable (why? - ansible seems to un-schedule them)
 		shutit.send('oadm manage-node master1.vagrant.test --schedulable')
 		shutit.send('oadm manage-node master2.vagrant.test --schedulable')
-		shutit.send('oadm manage-node master3.vagrant.test --schedulable')
 		# List the etcd members
 		shutit.send('etcdctl --endpoints https://192.168.2.14:2379,https://192.168.2.15:2379,https://192.168.2.16:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list')
 		shutit.send('git clone --depth=1 https://github.com/openshift/origin')
@@ -206,10 +196,94 @@ node2.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'west'}"
 		shutit.send('ln -s /etc/origin openshift.local.config')
 		shutit.send("""sed -i 's/10.0.2.15/openshift-cluster/g' common.sh""")
 		shutit.send('./populate.sh')
-		shutit.pause_point('Migrate etcd....')
 		shutit.logout()
 		shutit.logout()
 
+		#shutit.pause_point('Migrate etcd....')
+		# Get backup
+		# https://docs.openshift.com/enterprise/3.2/install_config/upgrading/manual_upgrades.html#preparing-for-a-manual-upgrade
+		for machine in ('etcd1','etcd2','etcd3'):
+			shutit.login(command='vagrant ssh ' + machine)
+			shutit.login(command='sudo su - ')
+			shutit.send('ETCD_DATA_DIR=/var/lib/etcd')
+			shutit.send('etcdctl backup --data-dir $ETCD_DATA_DIR --backup-dir $ETCD_DATA_DIR.backup')
+			shutit.send('cp /etc/etcd/etcd.conf /etc/etcd/etcd.conf.bak')
+			shutit.logout()
+			shutit.logout()
+		# https://docs.openshift.com/enterprise/3.2/install_config/downgrade.html
+		for machine in ('master1','master2'):
+			shutit.login(command='vagrant ssh ' + machine)
+			shutit.login(command='sudo su - ')
+			#shutit.send('systemctl stop atomic-openshift-master-api')
+			#shutit.send('systemctl stop atomic-openshift-master-controllers')
+			#shutit.send('systemctl stop atomic-openshift-node')
+			shutit.send('systemctl stop origin-master-api')
+			shutit.send('systemctl stop origin-master-controllers')
+			shutit.send('systemctl stop origin-node')
+			shutit.logout()
+			shutit.logout()
+		for machine in ('node1'):
+			shutit.login(command='vagrant ssh ' + machine)
+			shutit.login(command='sudo su - ')
+			#shutit.send('systemctl stop atomic-openshift-node')
+			shutit.send('systemctl stop origin-node')
+			shutit.logout()
+			shutit.logout()
+		# Stop etcd
+		for machine in ('etcd1','etcd2','etcd3'):
+			shutit.login(command='vagrant ssh ' + machine)
+			shutit.login(command='sudo su - ')
+			shutit.send('systemctl stop etcd')
+			shutit.logout()
+			shutit.logout()
+		# Uninstall etcd
+		for machine in ('etcd1','etcd2','etcd3'):
+			shutit.login(command='vagrant ssh ' + machine)
+			shutit.login(command='sudo su - ')
+			shutit.remove('etcd')
+			shutit.logout()
+			shutit.logout()
+		# Reinstall etcd
+		for machine in ('etcd1','etcd2','etcd3'):
+			shutit.login(command='vagrant ssh ' + machine)
+			shutit.login(command='sudo su - ')
+			shutit.install('etcd')
+			shutit.logout()
+			shutit.logout()
+		shutit.pause_point('https://docs.openshift.com/enterprise/3.2/install_config/downgrade.html#downgrading-restoring-external-etcd')
+		shutit.login(command='vagrant ssh etcd1')
+		shutit.login(command='sudo su - ')
+		# Run the following on the etcd host:
+		shutit.send('ETCD_DIR=/var/lib/etcd')
+		shutit.send('mv $ETCD_DIR /var/lib/etcd.orig')
+		shutit.send('cp -Rp ${ETCD_DIR}.backup $ETCD_DIR')
+		shutit.send('chcon -R --reference /var/lib/etcd.orig/ $ETCD_DIR')
+		shutit.send('chown -R etcd:etcd $ETCD_DIR')
+		# Restore your /etc/etcd/etcd.conf file from backup or .rpmsave.
+		shutit.send('cp /etc/etcd/etcd.conf.bak /etc/etcd/etcd.conf')
+		shutit.send("""sed -i '/ExecStart/s/"$/  --force-new-cluster"/' /usr/lib/systemd/system/etcd.service""")
+		shutit.send('systemctl daemon-reload')
+		shutit.send('systemctl start etcd')
+		shutit.send('systemctl status etcd')
+
+		# Verify the etcd service started correctly, then re-edit the /usr/lib/systemd/system/etcd.service file and remove the --force-new-cluster option:
+		shutit.send("""sed -i '/ExecStart/s/ --force-new-cluster//' /usr/lib/systemd/system/etcd.service""")
+		shutit.send('systemctl daemon-reload')
+		shutit.send('systemctl start etcd')
+		shutit.send('systemctl status etcd')
+		shutit.send('etcdctl --cert-file=/etc/etcd/peer.crt --key-file=/etc/etcd/peer.key --ca-file=/etc/etcd/ca.crt --peers="https://192.168.2.14:2379" ls')
+		shutit.send('etcdctl --cert-file=/etc/etcd/peer.crt --key-file=/etc/etcd/peer.key --ca-file=/etc/etcd/ca.crt --peers="https://192.168.2.14:2379" member list')
+
+		# Adding a new node
+		etcd_first_member_id = shutit.send_and_get_output("""etcdctl --cert-file=/etc/etcd/peer.crt --key-file=/etc/etcd/peer.key --ca-file=/etc/etcd/ca.crt --peers="https://192.168.2.14:2379" member list | awk -F: '{print $1}'""")
+		# Replace the initial with a single node
+		shutit.send("""sed -i 's/^ETCD.*/ETCD_INITIAL_ADVERTISE_PEER_URLS=https:\/\/192.168.2.14:2380/'""")
+		shutit.send('''etcdctl --cert-file=/etc/etcd/peer.crt --key-file=/etc/etcd/peer.key --ca-file=/etc/etcd/ca.crt --peers="https://192.168.2.14:2379" member update ''' + etcd_first_member_id + ''' https://192.168.2.14:2380''')
+		shutit.pause_point('Re-run the member list command and ensure the peer URLs no longer include localhost.')
+
+		# TODO: add nodes
+		shutit.logout()
+		shutit.logout()
 		return True
 
 	def get_config(self, shutit):
