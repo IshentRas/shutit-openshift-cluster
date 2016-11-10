@@ -109,181 +109,106 @@ end''')
 			shutit.send('route add -net 8.8.8.8 netmask 255.255.255.255 eth1')
 			ip_addr = shutit.send_and_get_output("""ip -4 route get 8.8.8.8 | head -1 | awk '{print $NF}'""")
 			shutit.send(r"""sed -i 's/127.0.0.1\t\(.*\).vagrant.test.*/""" + ip_addr + r"""\t\1.vagrant.test\t\1/' /etc/hosts""")
+			shutit.install('epel-release')
+			shutit.install('chef')
 			shutit.logout()
 			shutit.logout()
-		shutit.login(command='vagrant ssh master1')
-		shutit.login(command='sudo su - ')
-		shutit.install('epel-release')
-		shutit.install('git')
-		shutit.install('ansible')
-		shutit.install('pyOpenSSL')
-		shutit.install('etcd') # For the client
-		shutit.send('git clone --depth=1 https://github.com/openshift/openshift-ansible -b release-1.3')
-		shutit.multisend('ssh-keygen',{'Enter file':'','Enter passphrase':'','Enter same pass':''})
-		shutit.send_file('/etc/ansible/hosts','''# Create an OSEv3 group that contains the master, nodes, etcd, and lb groups.
-# The lb group lets Ansible configure HAProxy as the load balancing solution.
-# Comment lb out if your load balancer is pre-configured.
-[OSEv3:children]
-masters
-nodes
-etcd
-lb
 
-# Set variables common for all OSEv3 hosts
-[OSEv3:vars]
-ansible_ssh_user=root
-deployment_type=origin
-
-# Uncomment the following to enable htpasswd authentication; defaults to
-# DenyAllPasswordIdentityProvider.
-#openshift_master_identity_providers=[{'name': 'htpasswd_auth', 'login': 'true', 'challenge': 'true', 'kind': 'HTPasswdPasswordIdentityProvider', 'filename': '/etc/origin/master/htpasswd'}]
-
-# Native high availbility cluster method with optional load balancer.
-# If no lb group is defined installer assumes that a load balancer has
-# been preconfigured. For installation the value of
-# openshift_master_cluster_hostname must resolve to the load balancer
-# or to one or all of the masters defined in the inventory if no load
-# balancer is present.
-openshift_master_cluster_method=native
-openshift_master_cluster_hostname=openshift-cluster.vagrant.test
-openshift_master_cluster_public_hostname=openshift-cluster.vagrant.test
-
-# apply updated node defaults
-openshift_node_kubelet_args={'pods-per-core': ['10'], 'max-pods': ['250'], 'image-gc-high-threshold': ['90'], 'image-gc-low-threshold': ['80']}
-
-# override the default controller lease ttl
-#osm_controller_lease_ttl=30
-
-# enable ntp on masters to ensure proper failover
-openshift_clock_enabled=true
-
-# host group for masters
-[masters]
-master1.vagrant.test
-master2.vagrant.test
-
-# host group for etcd
-[etcd]
-etcd1.vagrant.test
-etcd2.vagrant.test
-etcd3.vagrant.test
-
-# Specify load balancer host
-[lb]
-openshift-cluster.vagrant.test
-
-# host group for nodes, includes region info
-[nodes]
-master[1:2].vagrant.test openshift_node_labels="{'region': 'infra', 'zone': 'default'}"
-node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"''')
-		for machine in machines:
-			# Set up ansible.
-			shutit.multisend('ssh-copy-id root@' + machine,{'ontinue connecting':'yes','assword':'origin'})
-			shutit.multisend('ssh-copy-id root@' + machine + '.vagrant.test',{'ontinue connecting':'yes','assword':'origin'})
-		while True:
-			shutit.multisend('ansible-playbook ~/openshift-ansible/playbooks/byo/config.yml',{'ontinue connecting':'yes'})
-			if shutit.send_and_match_output('oc get nodes','.*node1.vagrant.test     Ready.*'):
-				break
-		# Need to set masters as schedulable (why? - ansible seems to un-schedule them)
-		shutit.send('oadm manage-node master1.vagrant.test --schedulable')
-		shutit.send('oadm manage-node master2.vagrant.test --schedulable')
-		# List the etcd members
-		shutit.send('etcdctl --endpoints https://192.168.2.14:2379,https://192.168.2.15:2379,https://192.168.2.16:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list')
-		shutit.send('git clone --depth=1 https://github.com/openshift/origin')
-		shutit.send('cd origin/examples')
-		# TODO: https://github.com/openshift/origin/tree/master/examples/data-population
-		shutit.send('cd data-population')
-		shutit.send('ln -s /etc/origin openshift.local.config')
-		shutit.send("""sed -i 's/10.0.2.15/openshift-cluster/g' common.sh""")
-		shutit.send('./populate.sh')
+		#shutit.send('git clone --depth=1 https://github.com/openshift/origin')
+		#shutit.send('cd origin/examples')
+		## TODO: https://github.com/openshift/origin/tree/master/examples/data-population
+		#shutit.send('cd data-population')
+		#shutit.send('ln -s /etc/origin openshift.local.config')
+		#shutit.send("""sed -i 's/10.0.2.15/openshift-cluster/g' common.sh""")
+		#shutit.send('./populate.sh')
 		shutit.logout()
 		shutit.logout()
 
-		#shutit.pause_point('Migrate etcd....')
-		# Get backup
-		# https://docs.openshift.com/enterprise/3.2/install_config/upgrading/manual_upgrades.html#preparing-for-a-manual-upgrade
-		for machine in ('etcd1','etcd2','etcd3'):
-			shutit.login(command='vagrant ssh ' + machine)
-			shutit.login(command='sudo su - ')
-			shutit.send('ETCD_DATA_DIR=/var/lib/etcd')
-			shutit.send('etcdctl backup --data-dir $ETCD_DATA_DIR --backup-dir $ETCD_DATA_DIR.backup')
-			shutit.send('cp /etc/etcd/etcd.conf /etc/etcd/etcd.conf.bak')
-			shutit.logout()
-			shutit.logout()
-		# https://docs.openshift.com/enterprise/3.2/install_config/downgrade.html
-		for machine in ('master1','master2'):
-			shutit.login(command='vagrant ssh ' + machine)
-			shutit.login(command='sudo su - ')
-			#shutit.send('systemctl stop atomic-openshift-master-api')
-			#shutit.send('systemctl stop atomic-openshift-master-controllers')
-			#shutit.send('systemctl stop atomic-openshift-node')
-			shutit.send('systemctl stop origin-master-api')
-			shutit.send('systemctl stop origin-master-controllers')
-			shutit.send('systemctl stop origin-node')
-			shutit.logout()
-			shutit.logout()
-		for machine in ('node1'):
-			shutit.login(command='vagrant ssh ' + machine)
-			shutit.login(command='sudo su - ')
-			#shutit.send('systemctl stop atomic-openshift-node')
-			shutit.send('systemctl stop origin-node')
-			shutit.logout()
-			shutit.logout()
-		# Stop etcd
-		for machine in ('etcd1','etcd2','etcd3'):
-			shutit.login(command='vagrant ssh ' + machine)
-			shutit.login(command='sudo su - ')
-			shutit.send('systemctl stop etcd')
-			shutit.logout()
-			shutit.logout()
-		# Uninstall etcd
-		for machine in ('etcd1','etcd2','etcd3'):
-			shutit.login(command='vagrant ssh ' + machine)
-			shutit.login(command='sudo su - ')
-			shutit.remove('etcd')
-			shutit.logout()
-			shutit.logout()
-		# Reinstall etcd
-		for machine in ('etcd1','etcd2','etcd3'):
-			shutit.login(command='vagrant ssh ' + machine)
-			shutit.login(command='sudo su - ')
-			shutit.install('etcd')
-			shutit.logout()
-			shutit.logout()
-		shutit.pause_point('https://docs.openshift.com/enterprise/3.2/install_config/downgrade.html#downgrading-restoring-external-etcd')
-		shutit.login(command='vagrant ssh etcd1')
-		shutit.login(command='sudo su - ')
-		# Run the following on the etcd host:
-		shutit.send('ETCD_DIR=/var/lib/etcd')
-		shutit.send('mv $ETCD_DIR /var/lib/etcd.orig')
-		shutit.send('cp -Rp ${ETCD_DIR}.backup $ETCD_DIR')
-		shutit.send('chcon -R --reference /var/lib/etcd.orig/ $ETCD_DIR')
-		shutit.send('chown -R etcd:etcd $ETCD_DIR')
-		# Restore your /etc/etcd/etcd.conf file from backup or .rpmsave.
-		shutit.send('cp /etc/etcd/etcd.conf.bak /etc/etcd/etcd.conf')
-		shutit.send("""sed -i '/ExecStart/s/"$/  --force-new-cluster"/' /usr/lib/systemd/system/etcd.service""")
-		shutit.send('systemctl daemon-reload')
-		shutit.send('systemctl start etcd')
-		shutit.send('systemctl status etcd')
+		##shutit.pause_point('Migrate etcd....')
+		## Get backup
+		## https://docs.openshift.com/enterprise/3.2/install_config/upgrading/manual_upgrades.html#preparing-for-a-manual-upgrade
+		#for machine in ('etcd1','etcd2','etcd3'):
+		#	shutit.login(command='vagrant ssh ' + machine)
+		#	shutit.login(command='sudo su - ')
+		#	shutit.send('ETCD_DATA_DIR=/var/lib/etcd')
+		#	shutit.send('etcdctl backup --data-dir $ETCD_DATA_DIR --backup-dir $ETCD_DATA_DIR.backup')
+		#	shutit.send('cp /etc/etcd/etcd.conf /etc/etcd/etcd.conf.bak')
+		#	shutit.logout()
+		#	shutit.logout()
+		## https://docs.openshift.com/enterprise/3.2/install_config/downgrade.html
+		#for machine in ('master1','master2'):
+		#	shutit.login(command='vagrant ssh ' + machine)
+		#	shutit.login(command='sudo su - ')
+		#	#shutit.send('systemctl stop atomic-openshift-master-api')
+		#	#shutit.send('systemctl stop atomic-openshift-master-controllers')
+		#	#shutit.send('systemctl stop atomic-openshift-node')
+		#	shutit.send('systemctl stop origin-master-api')
+		#	shutit.send('systemctl stop origin-master-controllers')
+		#	shutit.send('systemctl stop origin-node')
+		#	shutit.logout()
+		#	shutit.logout()
+		#for machine in ('node1'):
+		#	shutit.login(command='vagrant ssh ' + machine)
+		#	shutit.login(command='sudo su - ')
+		#	#shutit.send('systemctl stop atomic-openshift-node')
+		#	shutit.send('systemctl stop origin-node')
+		#	shutit.logout()
+		#	shutit.logout()
+		## Stop etcd
+		#for machine in ('etcd1','etcd2','etcd3'):
+		#	shutit.login(command='vagrant ssh ' + machine)
+		#	shutit.login(command='sudo su - ')
+		#	shutit.send('systemctl stop etcd')
+		#	shutit.logout()
+		#	shutit.logout()
+		## Uninstall etcd
+		#for machine in ('etcd1','etcd2','etcd3'):
+		#	shutit.login(command='vagrant ssh ' + machine)
+		#	shutit.login(command='sudo su - ')
+		#	shutit.remove('etcd')
+		#	shutit.logout()
+		#	shutit.logout()
+		## Reinstall etcd
+		#for machine in ('etcd1','etcd2','etcd3'):
+		#	shutit.login(command='vagrant ssh ' + machine)
+		#	shutit.login(command='sudo su - ')
+		#	shutit.install('etcd')
+		#	shutit.logout()
+		#	shutit.logout()
+		#shutit.pause_point('https://docs.openshift.com/enterprise/3.2/install_config/downgrade.html#downgrading-restoring-external-etcd')
+		#shutit.login(command='vagrant ssh etcd1')
+		#shutit.login(command='sudo su - ')
+		## Run the following on the etcd host:
+		#shutit.send('ETCD_DIR=/var/lib/etcd')
+		#shutit.send('mv $ETCD_DIR /var/lib/etcd.orig')
+		#shutit.send('cp -Rp ${ETCD_DIR}.backup $ETCD_DIR')
+		#shutit.send('chcon -R --reference /var/lib/etcd.orig/ $ETCD_DIR')
+		#shutit.send('chown -R etcd:etcd $ETCD_DIR')
+		## Restore your /etc/etcd/etcd.conf file from backup or .rpmsave.
+		#shutit.send('cp /etc/etcd/etcd.conf.bak /etc/etcd/etcd.conf')
+		#shutit.send("""sed -i '/ExecStart/s/"$/  --force-new-cluster"/' /usr/lib/systemd/system/etcd.service""")
+		#shutit.send('systemctl daemon-reload')
+		#shutit.send('systemctl start etcd')
+		#shutit.send('systemctl status etcd')
 
-		# Verify the etcd service started correctly, then re-edit the /usr/lib/systemd/system/etcd.service file and remove the --force-new-cluster option:
-		shutit.send("""sed -i '/ExecStart/s/ --force-new-cluster//' /usr/lib/systemd/system/etcd.service""")
-		shutit.send('systemctl daemon-reload')
-		shutit.send('systemctl start etcd')
-		shutit.send('systemctl status etcd')
-		shutit.send('etcdctl --cert-file=/etc/etcd/peer.crt --key-file=/etc/etcd/peer.key --ca-file=/etc/etcd/ca.crt --peers="https://192.168.2.14:2379" ls')
-		shutit.send('etcdctl --cert-file=/etc/etcd/peer.crt --key-file=/etc/etcd/peer.key --ca-file=/etc/etcd/ca.crt --peers="https://192.168.2.14:2379" member list')
+		## Verify the etcd service started correctly, then re-edit the /usr/lib/systemd/system/etcd.service file and remove the --force-new-cluster option:
+		#shutit.send("""sed -i '/ExecStart/s/ --force-new-cluster//' /usr/lib/systemd/system/etcd.service""")
+		#shutit.send('systemctl daemon-reload')
+		#shutit.send('systemctl start etcd')
+		#shutit.send('systemctl status etcd')
+		#shutit.send('etcdctl --cert-file=/etc/etcd/peer.crt --key-file=/etc/etcd/peer.key --ca-file=/etc/etcd/ca.crt --peers="https://192.168.2.14:2379" ls')
+		#shutit.send('etcdctl --cert-file=/etc/etcd/peer.crt --key-file=/etc/etcd/peer.key --ca-file=/etc/etcd/ca.crt --peers="https://192.168.2.14:2379" member list')
 
-		# Adding a new node
-		etcd_first_member_id = shutit.send_and_get_output("""etcdctl --cert-file=/etc/etcd/peer.crt --key-file=/etc/etcd/peer.key --ca-file=/etc/etcd/ca.crt --peers="https://192.168.2.14:2379" member list | awk -F: '{print $1}'""")
-		# Replace the initial with a single node
-		shutit.send("""sed -i 's/^ETCD.*/ETCD_INITIAL_ADVERTISE_PEER_URLS=https:\/\/192.168.2.14:2380/'""")
-		shutit.send('''etcdctl --cert-file=/etc/etcd/peer.crt --key-file=/etc/etcd/peer.key --ca-file=/etc/etcd/ca.crt --peers="https://192.168.2.14:2379" member update ''' + etcd_first_member_id + ''' https://192.168.2.14:2380''')
-		shutit.pause_point('Re-run the member list command and ensure the peer URLs no longer include localhost.')
+		## Adding a new node
+		#etcd_first_member_id = shutit.send_and_get_output("""etcdctl --cert-file=/etc/etcd/peer.crt --key-file=/etc/etcd/peer.key --ca-file=/etc/etcd/ca.crt --peers="https://192.168.2.14:2379" member list | awk -F: '{print $1}'""")
+		## Replace the initial with a single node
+		#shutit.send("""sed -i 's/^ETCD.*/ETCD_INITIAL_ADVERTISE_PEER_URLS=https:\/\/192.168.2.14:2380/'""")
+		#shutit.send('''etcdctl --cert-file=/etc/etcd/peer.crt --key-file=/etc/etcd/peer.key --ca-file=/etc/etcd/ca.crt --peers="https://192.168.2.14:2379" member update ''' + etcd_first_member_id + ''' https://192.168.2.14:2380''')
+		#shutit.pause_point('Re-run the member list command and ensure the peer URLs no longer include localhost.')
 
-		# TODO: add nodes
-		shutit.logout()
-		shutit.logout()
+		## TODO: add nodes
+		#shutit.logout()
+		#shutit.logout()
 		return True
 
 	def get_config(self, shutit):
