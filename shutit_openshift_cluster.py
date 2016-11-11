@@ -148,50 +148,50 @@ solo true''')
     "cookbook-openshift3": {
       "openshift_HA": true,
       "openshift_cluster_name": "openshift-cluster.vagrant.test",
-      "openshift_master_cluster_vip": "192.168.1.13",
+      "openshift_master_cluster_vip": "192.168.2.13",
       "openshift_deployment_type": "origin",
       "master_servers": [
         {
           "fqdn": "master1.vagrant.test",
-          "ipaddress": "192.168.1.2"
+          "ipaddress": "192.168.2.2"
         },
         {
           "fqdn": "master2.vagrant.test",
-          "ipaddress": "192.168.1.3"
+          "ipaddress": "192.168.2.3"
         }
       ],
       "master_peers": [
         {
           "fqdn": "master2.vagrant.test",
-          "ipaddress": "192.168.1.3"
+          "ipaddress": "192.168.2.3"
         }
       ],
       "etcd_servers": [
         {
           "fqdn": "etcd1.vagrant.test",
-          "ipaddress": "192.168.1.14"
+          "ipaddress": "192.168.2.14"
         },
         {
           "fqdn": "etcd2.vagrant.test",
-          "ipaddress": "192.168.1.15"
+          "ipaddress": "192.168.2.15"
         },
        {
           "fqdn": "etcd3.vagrant.test",
-          "ipaddress": "192.168.1.16"
+          "ipaddress": "192.168.2.16"
         }
       ],
       "node_servers": [
         {
           "fqdn": "node1.vagrant.test",
-          "ipaddress": "192.168.1.24"
+          "ipaddress": "192.168.2.24"
         },
         {
           "fqdn": "master1.vagrant.test",
-          "ipaddress": "192.168.1.3"
+          "ipaddress": "192.168.2.2"
         },
         {
           "fqdn": "master2.vagrant.test",
-          "ipaddress": "192.168.1.3"
+          "ipaddress": "192.168.2.4"
         }
       ]
     }
