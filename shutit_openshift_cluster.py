@@ -193,12 +193,13 @@ solo true''')
     }
   }
 }''')
-			# TODO: add cookbooks
 			shutit.logout()
 			shutit.logout()
 		for machine in machine_names:
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
+			if machine not in ('etcd4','etcd5','etcd6'):
+				shutit.send('echo "*/10 0 0 0 0 chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb" | crontab')
 			shutit.logout()
 			shutit.logout()
 		shutit.pause_point('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3] -c ~/chef-solo-example/solo.rb')
