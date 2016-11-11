@@ -67,27 +67,27 @@ Vagrant.configure("2") do |config|
     etcd3.vm.network :private_network, ip: "192.168.2.16"
     etcd3.vm.hostname = "etcd3.vagrant.test"
   end
-  config.vm.define "etcd4" do |etcd4|
-    etcd4.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    etcd4.vm.network :private_network, ip: "192.168.2.17"
-    etcd4.vm.hostname = "etcd4.vagrant.test"
-  end
-  config.vm.define "etcd5" do |etcd5|
-    etcd5.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    etcd5.vm.network :private_network, ip: "192.168.2.18"
-    etcd5.vm.hostname = "etcd5.vagrant.test"
-  end
-  config.vm.define "etcd6" do |etcd6|
-    etcd6.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    etcd6.vm.network :private_network, ip: "192.168.2.19"
-    etcd6.vm.hostname = "etcd6.vagrant.test"
-  end
-
-  config.vm.define "node1" do |node1|
-    node1.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    node1.vm.network :private_network, ip: "192.168.2.24"
-    node1.vm.hostname = "node1.vagrant.test"
-  end
+#  config.vm.define "etcd4" do |etcd4|
+#    etcd4.vm.box = ''' + '"' + vagrant_image + '"' + '''
+#    etcd4.vm.network :private_network, ip: "192.168.2.17"
+#    etcd4.vm.hostname = "etcd4.vagrant.test"
+#  end
+#  config.vm.define "etcd5" do |etcd5|
+#    etcd5.vm.box = ''' + '"' + vagrant_image + '"' + '''
+#    etcd5.vm.network :private_network, ip: "192.168.2.18"
+#    etcd5.vm.hostname = "etcd5.vagrant.test"
+#  end
+#  config.vm.define "etcd6" do |etcd6|
+#    etcd6.vm.box = ''' + '"' + vagrant_image + '"' + '''
+#    etcd6.vm.network :private_network, ip: "192.168.2.19"
+#    etcd6.vm.hostname = "etcd6.vagrant.test"
+#  end
+#
+#  config.vm.define "node1" do |node1|
+#    node1.vm.box = ''' + '"' + vagrant_image + '"' + '''
+#    node1.vm.network :private_network, ip: "192.168.2.24"
+#    node1.vm.hostname = "node1.vagrant.test"
+#  end
 end''')
 		password = shutit.get_env_pass()
 		# TODO: provider
@@ -98,9 +98,10 @@ end''')
 			# See: https://access.redhat.com/articles/1320623
 			shutit.send('rm -fr /var/cache/yum/*')
 			shutit.send('yum clean all') 
-			shutit.send('yum update -y') 
 			shutit.install('xterm')
 			shutit.install('net-tools')
+			shutit.install('git')
+			# Allow logins via ssh between machines
 			shutit.send('''sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config''')
 			shutit.send('echo root:origin | /usr/sbin/chpasswd')
 			shutit.send('systemctl restart sshd')
@@ -110,10 +111,28 @@ end''')
 			ip_addr = shutit.send_and_get_output("""ip -4 route get 8.8.8.8 | head -1 | awk '{print $NF}'""")
 			shutit.send(r"""sed -i 's/127.0.0.1\t\(.*\).vagrant.test.*/""" + ip_addr + r"""\t\1.vagrant.test\t\1/' /etc/hosts""")
 			shutit.install('epel-release')
-			shutit.install('chef')
-			shutit.install('git clone https://github.com/IshentRas/cookbook-openshift3')
-			shutit.send('''ocp_cluster_environment.json''','''{
-  "name": "cluster_native",
+			shutit.send('rpm -i https://packages.chef.io/stable/el/7/chef-12.16.42-1.el7.x86_64.rpm')
+			shutit.send('mkdir -p /root/chef-solo-example')
+			shutit.send('mkdir -p /root/chef-solo-example/cookbooks')
+			shutit.send('mkdir -p /root/chef-solo-example/environments')
+			shutit.send('cd /root/chef-solo-example/cookbooks')
+			shutit.send('git clone https://github.com/IshentRas/cookbook-openshift3')
+			shutit.send('curl -L https://supermarket.chef.io/cookbooks/iptables/download | tar -zxvf -')
+			shutit.send('curl -L https://supermarket.chef.io/cookbooks/yum/versions/3.9.0/download | tar -zxvf -')
+			shutit.send('curl -L https://supermarket.chef.io/cookbooks/selinux_policy/download | tar -zxvf -')
+			shutit.send('curl -L https://supermarket.chef.io/cookbooks/compat_resource/download | tar -zxvf -')
+			shutit.send_file('/root/chef-solo-example/solo.rb','''cookbook_path [
+               '/root/chef-solo-example/cookbooks',
+               '/root/chef-solo-example/site-cookbooks'
+              ]
+environment_path '/root/chef-solo-example/environments'
+file_backup_path '/root/chef-solo-example/backup'
+file_cache_path '/root/chef-solo-example/cache'
+log_location STDOUT
+solo true''')
+
+			shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''','''{
+  "name": "ocp-cluster-environment",
   "description": "",
   "cookbook_versions": {
                                       },
@@ -169,14 +188,20 @@ end''')
         {
           "fqdn": "master2.vagrant.test",
           "ipaddress": "192.168.1.3"
-        },
-      ],
+        }
+      ]
     }
   }
 }''')
-			shutit.pause_point('chef-client -z -E ocp_cluster_environment.json --runlist cookbook-openshift3')
+			# TODO: add cookbooks
 			shutit.logout()
 			shutit.logout()
+		for machine in machine_names:
+			shutit.login(command='vagrant ssh ' + machine)
+			shutit.login(command='sudo su - ')
+			shutit.logout()
+			shutit.logout()
+		shutit.pause_point('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3] -c ~/chef-solo-example/solo.rb')
 
 		#shutit.send('git clone --depth=1 https://github.com/openshift/origin')
 		#shutit.send('cd origin/examples')
