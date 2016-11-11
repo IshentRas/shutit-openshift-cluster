@@ -97,6 +97,8 @@ end''')
 		for machine in machine_names:
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
+			# Switch off fastest mirror - it gives me nothing but grief (looooong waits)
+			shutit.send('''sed -i 's/enabled=1/enabled=0/' /etc/yum/pluginconf.d/fastestmirror.conf''')
 			# See: https://access.redhat.com/articles/1320623
 			shutit.send('rm -fr /var/cache/yum/*')
 			shutit.send('yum clean all') 
@@ -119,7 +121,13 @@ end''')
 			shutit.send('mkdir -p /root/chef-solo-example/environments')
 			shutit.send('mkdir -p /root/chef-solo-example/logs')
 			shutit.send('cd /root/chef-solo-example/cookbooks')
-			shutit.send('git clone https://github.com/IshentRas/cookbook-openshift3')
+			# Need my one for the etcd change
+			#shutit.send('git clone https://github.com/IshentRas/cookbook-openshift3')
+			shutit.send('git clone https://github.com/ianmiell/cookbook-openshift3')
+			# Filthy hack to 'override' the node['ipaddress'] value
+			shutit.send('''sed -i 's/#{node..ipaddress..}/192.168.2.14/g' /root/chef-solo-example/cookbooks/cookbook-openshift3/attributes/default.rb''')
+			shutit.send('''sed -i "s/node..ipaddress../'192.168.2.14'/g" /root/chef-solo-example/cookbooks/cookbook-openshift3/attributes/default.rb''')
+
 			shutit.send('curl -L https://supermarket.chef.io/cookbooks/iptables/download | tar -zxvf -')
 			shutit.send('curl -L https://supermarket.chef.io/cookbooks/yum/versions/3.9.0/download | tar -zxvf -')
 			shutit.send('curl -L https://supermarket.chef.io/cookbooks/selinux_policy/download | tar -zxvf -')
@@ -203,7 +211,7 @@ solo true''')
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
 			if machine not in ('etcd4','etcd5','etcd6'):
-				shutit.send('echo "*/10 * * * * chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1" | crontab')
+				shutit.send('echo "*/5 * * * * chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1" | crontab')
 			shutit.logout()
 			shutit.logout()
 		shutit.pause_point('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3] -c ~/chef-solo-example/solo.rb')
