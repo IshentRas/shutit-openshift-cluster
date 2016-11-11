@@ -149,6 +149,7 @@ solo true''')
       "openshift_HA": true,
       "openshift_cluster_name": "openshift-cluster.vagrant.test",
       "openshift_master_cluster_vip": "192.168.1.13",
+      "openshift_deployment_type": "origin",
       "master_servers": [
         {
           "fqdn": "master1.vagrant.test",
