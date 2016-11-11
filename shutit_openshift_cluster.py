@@ -83,11 +83,11 @@ Vagrant.configure("2") do |config|
 #    etcd6.vm.hostname = "etcd6.vagrant.test"
 #  end
 #
-#  config.vm.define "node1" do |node1|
-#    node1.vm.box = ''' + '"' + vagrant_image + '"' + '''
-#    node1.vm.network :private_network, ip: "192.168.2.24"
-#    node1.vm.hostname = "node1.vagrant.test"
-#  end
+  config.vm.define "node1" do |node1|
+    node1.vm.box = ''' + '"' + vagrant_image + '"' + '''
+    node1.vm.network :private_network, ip: "192.168.2.24"
+    node1.vm.hostname = "node1.vagrant.test"
+  end
 end''')
 		password = shutit.get_env_pass()
 		# TODO: provider
