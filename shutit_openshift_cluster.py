@@ -43,54 +43,61 @@ Vagrant.configure("2") do |config|
     master2.vm.network "private_network", ip: "192.168.2.3"
     master2.vm.hostname = "master2.vagrant.test"
   end
+  config.vm.define "master3" do |master3|    
+    master3.vm.box = ''' + '"' + vagrant_image + '"' + '''
+    master3.vm.network "private_network", ip: "192.168.2.4"
+    master3.vm.hostname = "master3.vagrant.test"
+  end
 
   config.vm.define "openshiftcluster" do |openshiftcluster|
     openshiftcluster.vm.box = ''' + '"' + vagrant_image + '"' + '''
     openshiftcluster.vm.network :private_network, ip: "192.168.2.13"
     openshiftcluster.vm.hostname = "openshift-cluster.vagrant.test"
   end
-
-  config.vm.define "etcd1" do |etcd1|
-    etcd1.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    etcd1.vm.network :private_network, ip: "192.168.2.14"
-    etcd1.vm.hostname = "etcd1.vagrant.test"
-  end
-  config.vm.define "etcd2" do |etcd2|
-    etcd2.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    etcd2.vm.network :private_network, ip: "192.168.2.15"
-    etcd2.vm.hostname = "etcd2.vagrant.test"
-  end
-  config.vm.define "etcd3" do |etcd3|
-    etcd3.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    etcd3.vm.network :private_network, ip: "192.168.2.16"
-    etcd3.vm.hostname = "etcd3.vagrant.test"
-  end
-#  config.vm.define "etcd4" do |etcd4|
-#    etcd4.vm.box = ''' + '"' + vagrant_image + '"' + '''
-#    etcd4.vm.network :private_network, ip: "192.168.2.17"
-#    etcd4.vm.hostname = "etcd4.vagrant.test"
-#  end
-#  config.vm.define "etcd5" do |etcd5|
-#    etcd5.vm.box = ''' + '"' + vagrant_image + '"' + '''
-#    etcd5.vm.network :private_network, ip: "192.168.2.18"
-#    etcd5.vm.hostname = "etcd5.vagrant.test"
-#  end
-#  config.vm.define "etcd6" do |etcd6|
-#    etcd6.vm.box = ''' + '"' + vagrant_image + '"' + '''
-#    etcd6.vm.network :private_network, ip: "192.168.2.19"
-#    etcd6.vm.hostname = "etcd6.vagrant.test"
-#  end
 #
+#  config.vm.define "etcd1" do |etcd1|
+#    etcd1.vm.box = ''' + '"' + vagrant_image + '"' + '''
+#    etcd1.vm.network :private_network, ip: "192.168.2.14"
+#    etcd1.vm.hostname = "etcd1.vagrant.test"
+#  end
+#  config.vm.define "etcd2" do |etcd2|
+#    etcd2.vm.box = ''' + '"' + vagrant_image + '"' + '''
+#    etcd2.vm.network :private_network, ip: "192.168.2.15"
+#    etcd2.vm.hostname = "etcd2.vagrant.test"
+#  end
+#  config.vm.define "etcd3" do |etcd3|
+#    etcd3.vm.box = ''' + '"' + vagrant_image + '"' + '''
+#    etcd3.vm.network :private_network, ip: "192.168.2.16"
+#    etcd3.vm.hostname = "etcd3.vagrant.test"
+#  end
+##  config.vm.define "etcd4" do |etcd4|
+##    etcd4.vm.box = ''' + '"' + vagrant_image + '"' + '''
+##    etcd4.vm.network :private_network, ip: "192.168.2.17"
+##    etcd4.vm.hostname = "etcd4.vagrant.test"
+##  end
+##  config.vm.define "etcd5" do |etcd5|
+##    etcd5.vm.box = ''' + '"' + vagrant_image + '"' + '''
+##    etcd5.vm.network :private_network, ip: "192.168.2.18"
+##    etcd5.vm.hostname = "etcd5.vagrant.test"
+##  end
+##  config.vm.define "etcd6" do |etcd6|
+##    etcd6.vm.box = ''' + '"' + vagrant_image + '"' + '''
+##    etcd6.vm.network :private_network, ip: "192.168.2.19"
+##    etcd6.vm.hostname = "etcd6.vagrant.test"
+##  end
+##
   config.vm.define "node1" do |node1|
     node1.vm.box = ''' + '"' + vagrant_image + '"' + '''
     node1.vm.network :private_network, ip: "192.168.2.24"
     node1.vm.hostname = "node1.vagrant.test"
   end
 end''')
-		machine_names = ('master1','master2','etcd1','etcd2','etcd3','node1','openshiftcluster','etcd4','etcd5','etcd6')
-		machine_names = ('master1','master2','etcd1','etcd2','etcd3','node1','openshiftcluster')
-		machines = ('master1.vagrant.test','master2.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test','openshift-cluster.vagrant.test','etcd4.vagrant.test','etcd5.vagrant.test','etcd6.vagrant.test')
-		machines = ('master1.vagrant.test','master2.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test','openshift-cluster.vagrant.test')
+		#machine_names = ('master1','master2','etcd1','etcd2','etcd3','node1','openshiftcluster','etcd4','etcd5','etcd6')
+		#machine_names = ('master1','master2','etcd1','etcd2','etcd3','node1','openshiftcluster')
+		machine_names = ('master1','master2','master3','node1','openshiftcluster')
+		#machines = ('master1.vagrant.test','master2.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test','openshift-cluster.vagrant.test','etcd4.vagrant.test','etcd5.vagrant.test','etcd6.vagrant.test')
+		#machines = ('master1.vagrant.test','master2.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test','openshift-cluster.vagrant.test')
+		machines = ('master1.vagrant.test','master2.vagrant.test','master3.vagrant.test','node1.vagrant.test','openshift-cluster.vagrant.test')
 		password = shutit.get_env_pass()
 		# TODO: provider
 		shutit.multisend('vagrant up --provider virtualbox',{'assword':password},timeout=99999)
@@ -166,26 +173,34 @@ solo true''')
         {
           "fqdn": "master2.vagrant.test",
           "ipaddress": "192.168.2.3"
+        },
+        {
+          "fqdn": "master3.vagrant.test",
+          "ipaddress": "192.168.2.4"
         }
       ],
       "master_peers": [
         {
           "fqdn": "master2.vagrant.test",
           "ipaddress": "192.168.2.3"
+        },
+        {
+          "fqdn": "master3.vagrant.test",
+          "ipaddress": "192.168.2.4"
         }
       ],
       "etcd_servers": [
         {
-          "fqdn": "etcd1.vagrant.test",
-          "ipaddress": "192.168.2.14"
+          "fqdn": "master1.vagrant.test",
+          "ipaddress": "192.168.2.2"
         },
         {
-          "fqdn": "etcd2.vagrant.test",
-          "ipaddress": "192.168.2.15"
+          "fqdn": "master2.vagrant.test",
+          "ipaddress": "192.168.2.3"
         },
        {
-          "fqdn": "etcd3.vagrant.test",
-          "ipaddress": "192.168.2.16"
+          "fqdn": "master3.vagrant.test",
+          "ipaddress": "192.168.2.4"
         }
       ],
       "node_servers": [
@@ -199,6 +214,10 @@ solo true''')
         },
         {
           "fqdn": "master2.vagrant.test",
+          "ipaddress": "192.168.2.4"
+        },
+        {
+          "fqdn": "master3.vagrant.test",
           "ipaddress": "192.168.2.4"
         }
       ]
