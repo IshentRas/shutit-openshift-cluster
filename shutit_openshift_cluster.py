@@ -95,6 +95,8 @@ end''')
 		for machine in machine_names:
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
+			# Switch off fastest mirror - it gives me nothing but grief (looooong waits)
+			shutit.send('''sed -i 's/enabled=1/enabled=0/' /etc/yum/pluginconf.d/fastestmirror.conf''')
 			# See: https://access.redhat.com/articles/1320623
 			shutit.send('rm -fr /var/cache/yum/*')
 			shutit.send('yum clean all')
