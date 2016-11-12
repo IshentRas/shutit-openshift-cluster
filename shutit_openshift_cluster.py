@@ -31,7 +31,7 @@ Vagrant.configure("2") do |config|
     vb.memory = "''' + memory + '''"
   end
 
-  config.vm.define "master1" do |master1|    
+  config.vm.define "master1" do |master1|
     master1.vm.box = ''' + '"' + vagrant_image + '"' + '''
     master1.vm.network "private_network", ip: "192.168.2.2"
     master1.vm.hostname = "master1.vagrant.test"
@@ -40,7 +40,7 @@ Vagrant.configure("2") do |config|
       v.customize ["modifyvm", :id, "--cpus", "2"]
     end
   end
-  config.vm.define "master2" do |master2|    
+  config.vm.define "master2" do |master2|
     master2.vm.box = ''' + '"' + vagrant_image + '"' + '''
     master2.vm.network "private_network", ip: "192.168.2.3"
     master2.vm.hostname = "master2.vagrant.test"
@@ -97,8 +97,8 @@ end''')
 			shutit.login(command='sudo su - ')
 			# See: https://access.redhat.com/articles/1320623
 			shutit.send('rm -fr /var/cache/yum/*')
-			shutit.send('yum clean all') 
-			shutit.send('yum update -y') 
+			shutit.send('yum clean all')
+			shutit.send('yum update -y')
 			shutit.install('xterm')
 			shutit.install('net-tools')
 			shutit.send('''sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config''')
@@ -195,7 +195,7 @@ node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
 		shutit.send('cd data-population')
 		shutit.send('ln -s /etc/origin openshift.local.config')
 		shutit.send("""sed -i 's/10.0.2.15/openshift-cluster/g' common.sh""")
-		shutit.send('./populate.sh')
+		#shutit.send('./populate.sh')
 		shutit.logout()
 		shutit.logout()
 
@@ -229,61 +229,119 @@ node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
 			shutit.send('systemctl stop origin-node')
 			shutit.logout()
 			shutit.logout()
-		# Stop etcd
-		for machine in ('etcd1','etcd2','etcd3'):
-			shutit.login(command='vagrant ssh ' + machine)
-			shutit.login(command='sudo su - ')
-			shutit.send('systemctl stop etcd')
-			shutit.logout()
-			shutit.logout()
-		# Uninstall etcd
-		for machine in ('etcd1','etcd2','etcd3'):
-			shutit.login(command='vagrant ssh ' + machine)
-			shutit.login(command='sudo su - ')
-			shutit.remove('etcd')
-			shutit.logout()
-			shutit.logout()
-		# Reinstall etcd
-		for machine in ('etcd1','etcd2','etcd3'):
-			shutit.login(command='vagrant ssh ' + machine)
-			shutit.login(command='sudo su - ')
-			shutit.install('etcd')
-			shutit.logout()
-			shutit.logout()
-		shutit.pause_point('https://docs.openshift.com/enterprise/3.2/install_config/downgrade.html#downgrading-restoring-external-etcd')
-		shutit.login(command='vagrant ssh etcd1')
+
+		shutit.login(command='vagrant ssh master1')
 		shutit.login(command='sudo su - ')
-		# Run the following on the etcd host:
-		shutit.send('ETCD_DIR=/var/lib/etcd')
-		shutit.send('mv $ETCD_DIR /var/lib/etcd.orig')
-		shutit.send('cp -Rp ${ETCD_DIR}.backup $ETCD_DIR')
-		shutit.send('chcon -R --reference /var/lib/etcd.orig/ $ETCD_DIR')
-		shutit.send('chown -R etcd:etcd $ETCD_DIR')
-		# Restore your /etc/etcd/etcd.conf file from backup or .rpmsave.
-		shutit.send('cp /etc/etcd/etcd.conf.bak /etc/etcd/etcd.conf')
-		shutit.send("""sed -i '/ExecStart/s/"$/  --force-new-cluster"/' /usr/lib/systemd/system/etcd.service""")
-		shutit.send('systemctl daemon-reload')
-		shutit.send('systemctl start etcd')
-		shutit.send('systemctl status etcd')
+		# Chef variables
+		master_generate_certs_dir = '/var/www/html/master/generated_certs'
+		master_etcd_cert_prefix = 'master.etcd-'
+		master_server_fqdn = 'master1.vagrant.test'
+		master_server_ip = '192.168.2.2'
+		master_etcd_cert_prefix = 'etcd_v3_req'
+		etcd_openssl_conf = '/etc/etcd/openssl.conf'
+		shutit.pause_point('Create certs with oadm')
 
-		# Verify the etcd service started correctly, then re-edit the /usr/lib/systemd/system/etcd.service file and remove the --force-new-cluster option:
-		shutit.send("""sed -i '/ExecStart/s/ --force-new-cluster//' /usr/lib/systemd/system/etcd.service""")
-		shutit.send('systemctl daemon-reload')
-		shutit.send('systemctl start etcd')
-		shutit.send('systemctl status etcd')
-		shutit.send('etcdctl --cert-file=/etc/etcd/peer.crt --key-file=/etc/etcd/peer.key --ca-file=/etc/etcd/ca.crt --peers="https://192.168.2.14:2379" ls')
-		shutit.send('etcdctl --cert-file=/etc/etcd/peer.crt --key-file=/etc/etcd/peer.key --ca-file=/etc/etcd/ca.crt --peers="https://192.168.2.14:2379" member list')
+#		# etcd_master == master1 in this chef script
+#		for j
+#        %w(server peer).each do |etcd_certificates|
+#            command "openssl req -new -keyout #{etcd_certificates}.key -config #{node['cookbook-openshift3']['etcd_openssl_conf']} -out #{etcd_certificates}.csr -reqexts #{node['cookbook-openshift3']['etcd_req_ext']} -batch -nodes -subj /CN=#{etcd_master['fqdn']}"
+#            environment 'SAN' => "IP:#{etcd_master['ipaddress']}"
+#            cwd "#{node['cookbook-openshift3']['etcd_generated_certs_dir']}/etcd-#{etcd_master['fqdn']}"
+#            creates "#{node['cookbook-openshift3']['etcd_generated_certs_dir']}/etcd-#{etcd_master['fqdn']}/#{etcd_certificates}.csr"
+#
+#            command "openssl ca -name #{node['cookbook-openshift3']['etcd_ca_name']} -config #{node['cookbook-openshift3']['etcd_openssl_conf']} -out #{etcd_certificates}.crt -in #{etcd_certificates}.csr -extensions #{node['cookbook-openshift3']["etcd_ca_exts_#{etcd_certificates}"]} -batch"
+#            environment 'SAN' => ''
+#            cwd "#{node['cookbook-openshift3']['etcd_generated_certs_dir']}/etcd-#{etcd_master['fqdn']}"
+#            creates "#{node['cookbook-openshift3']['etcd_generated_certs_dir']}/etcd-#{etcd_master['fqdn']}/#{etcd_certificates}.crt"
+#
+#        link "#{node['cookbook-openshift3']['etcd_generated_certs_dir']}/etcd-#{etcd_master['fqdn']}/ca.crt" do
+#          to "#{node['cookbook-openshift3']['etcd_ca_dir']}/ca.crt"
+#          link_type :hard
+#        end
 
-		# Adding a new node
-		etcd_first_member_id = shutit.send_and_get_output("""etcdctl --cert-file=/etc/etcd/peer.crt --key-file=/etc/etcd/peer.key --ca-file=/etc/etcd/ca.crt --peers="https://192.168.2.14:2379" member list | awk -F: '{print $1}'""")
-		# Replace the initial with a single node
-		shutit.send("""sed -i 's/^ETCD.*/ETCD_INITIAL_ADVERTISE_PEER_URLS=https:\/\/192.168.2.14:2380/'""")
-		shutit.send('''etcdctl --cert-file=/etc/etcd/peer.crt --key-file=/etc/etcd/peer.key --ca-file=/etc/etcd/ca.crt --peers="https://192.168.2.14:2379" member update ''' + etcd_first_member_id + ''' https://192.168.2.14:2380''')
-		shutit.pause_point('Re-run the member list command and ensure the peer URLs no longer include localhost.')
-
-		# TODO: add nodes
+#        #cwd "#{node['cookbook-openshift3']['master_generated_certs_dir']}/openshift-master-#{master_server['fqdn']}"
+#		shutit.send('cd ' + master_generated_certs_dir + '/openshift-master-' + master_server_fqdn)
+#        #environment 'SAN' => "IP:#{master_server['ipaddress']}"
+#		shutit.send('export SAN=' + master_server_ip)
+#		#command "openssl req -new -keyout #{node['cookbook-openshift3']['master_etcd_cert_prefix']}client.key -config #{node['cookbook-openshift3']['etcd_openssl_conf']} -out #{node['cookbook-openshift3']['master_etcd_cert_prefix']}client.csr -reqexts #{node['cookbook-openshift3']['etcd_req_ext']} -batch -nodes -subj /CN=#{master_server['fqdn']}"
+#		shutit.send('openssl req -new -keyout ' + master_etcd_cert_prefix + 'client.key -config ' + etcd_openssl_conf + ' -out ' + master_etcd_cert_prefix + 'client.csr -reqexts ' + master_etcd_cert_prefix + ' -batch -nodes -subj /CN=' + master_server_fqdn)
+#
+#		#cwd "#{node['cookbook-openshift3']['master_generated_certs_dir']}/openshift-master-#{master_server['fqdn']}"
+#		shutit.send('cd ' + master_generated_certs_dir + '/openshift-master-' + master_server_fqdn)
+#		#environment 'SAN' => ''
+#		shutit.send('export SAN=""')
+#		#command "openssl ca -name #{node['cookbook-openshift3']['etcd_ca_name']} -config #{node['cookbook-openshift3']['etcd_openssl_conf']} -out #{node['cookbook-openshift3']['master_etcd_cert_prefix']}client.crt -in #{node['cookbook-openshift3']['master_etcd_cert_prefix']}client.csr -batch"
+#		shutit.send('openssl ca -name ' + etcd_ca_name + ' -config ' + etcd_openssl_conf + ' -out ' + master_etcd_cert_prefix + 'client.crt -in ' + master_etcd_cert_prefix + 'client.csr -batch')
+#
+#		#link "#{node['cookbook-openshift3']['master_generated_certs_dir']}/openshift-master-#{master_server['fqdn']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}ca.crt" do
+#		#to "#{node['cookbook-openshift3']['etcd_ca_dir']}/ca.crt"
+#		#link_type :hard
+#		shutit.send('ln ' + master_generated_certs_dir + '/openshift-master-' + master_server_fqdn + '/' + master_etcd_cert_prefix + 'ca.crt ' + etcd_ca_dir + '/ca/crt')
+#
+#    execute "Create a tarball of the etcd master certs for #{master_server['fqdn']}" do
+#      command "tar czvf #{node['cookbook-openshift3']['master_generated_certs_dir']}/openshift-master-#{master_server['fqdn']}.tgz -C #{node['cookbook-openshift3']['master_generated_certs_dir']}/openshift-master-#{master_server['fqdn']} . "
+#      creates "#{node['cookbook-openshift3']['master_generated_certs_dir']}/openshift-master-#{master_server['fqdn']}.tgz"
+#    end
+		shutit.pause_point('add items on the fly: https://coreos.com/etcd/docs/latest/v2/admin_guide.html#member-migration')
 		shutit.logout()
 		shutit.logout()
+
+		# OLD METHOD
+		## Stop etcd
+		#for machine in ('etcd1','etcd2','etcd3'):
+		#	shutit.login(command='vagrant ssh ' + machine)
+		#	shutit.login(command='sudo su - ')
+		#	shutit.send('systemctl stop etcd')
+		#	shutit.logout()
+		#	shutit.logout()
+		## Uninstall etcd
+		#for machine in ('etcd1','etcd2','etcd3'):
+		#	shutit.login(command='vagrant ssh ' + machine)
+		#	shutit.login(command='sudo su - ')
+		#	shutit.remove('etcd')
+		#	shutit.logout()
+		#	shutit.logout()
+		## Reinstall etcd
+		#for machine in ('etcd1','etcd2','etcd3'):
+		#	shutit.login(command='vagrant ssh ' + machine)
+		#	shutit.login(command='sudo su - ')
+		#	shutit.install('etcd')
+		#	shutit.logout()
+		#	shutit.logout()
+		#shutit.pause_point('https://docs.openshift.com/enterprise/3.2/install_config/downgrade.html#downgrading-restoring-external-etcd')
+		#shutit.login(command='vagrant ssh etcd1')
+		#shutit.login(command='sudo su - ')
+		## Run the following on the etcd host:
+		#shutit.send('ETCD_DIR=/var/lib/etcd')
+		#shutit.send('mv $ETCD_DIR /var/lib/etcd.orig')
+		#shutit.send('cp -Rp ${ETCD_DIR}.backup $ETCD_DIR')
+		#shutit.send('chcon -R --reference /var/lib/etcd.orig/ $ETCD_DIR')
+		#shutit.send('chown -R etcd:etcd $ETCD_DIR')
+		## Restore your /etc/etcd/etcd.conf file from backup or .rpmsave.
+		#shutit.send('cp /etc/etcd/etcd.conf.bak /etc/etcd/etcd.conf')
+		#shutit.send("""sed -i '/ExecStart/s/"$/  --force-new-cluster"/' /usr/lib/systemd/system/etcd.service""")
+		#shutit.send('systemctl daemon-reload')
+		#shutit.send('systemctl start etcd')
+		#shutit.send('systemctl status etcd')
+
+		## Verify the etcd service started correctly, then re-edit the /usr/lib/systemd/system/etcd.service file and remove the --force-new-cluster option:
+		#shutit.send("""sed -i '/ExecStart/s/ --force-new-cluster//' /usr/lib/systemd/system/etcd.service""")
+		#shutit.send('systemctl daemon-reload')
+		#shutit.send('systemctl start etcd')
+		#shutit.send('systemctl status etcd')
+		#shutit.send('etcdctl --cert-file=/etc/etcd/peer.crt --key-file=/etc/etcd/peer.key --ca-file=/etc/etcd/ca.crt --peers="https://192.168.2.14:2379" ls')
+		#shutit.send('etcdctl --cert-file=/etc/etcd/peer.crt --key-file=/etc/etcd/peer.key --ca-file=/etc/etcd/ca.crt --peers="https://192.168.2.14:2379" member list')
+
+		## Adding a new node
+		#etcd_first_member_id = shutit.send_and_get_output("""etcdctl --cert-file=/etc/etcd/peer.crt --key-file=/etc/etcd/peer.key --ca-file=/etc/etcd/ca.crt --peers="https://192.168.2.14:2379" member list | awk -F: '{print $1}'""")
+		## Replace the initial with a single node
+		#shutit.send("""sed -i 's/^ETCD.*/ETCD_INITIAL_ADVERTISE_PEER_URLS=https:\/\/192.168.2.14:2380/'""")
+		#shutit.send('''etcdctl --cert-file=/etc/etcd/peer.crt --key-file=/etc/etcd/peer.key --ca-file=/etc/etcd/ca.crt --peers="https://192.168.2.14:2379" member update ''' + etcd_first_member_id + ''' https://192.168.2.14:2380''')
+		#shutit.pause_point('Re-run the member list command and ensure the peer URLs no longer include localhost.')
+
+		## TODO: add nodes
+		#shutit.logout()
+		#shutit.logout()
 		return True
 
 	def get_config(self, shutit):
