@@ -224,7 +224,7 @@ node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
 			shutit.send('systemctl stop origin-node')
 			shutit.logout()
 			shutit.logout()
-		for machine in ('node1'):
+		for machine in ('master1','master2','node1'):
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
 			#shutit.send('systemctl stop atomic-openshift-node')
