@@ -130,8 +130,8 @@ end''')
 			shutit.send('cd /root/chef-solo-example/cookbooks')
 			shutit.send('git clone https://github.com/IshentRas/cookbook-openshift3')
 			# Filthy hack to 'override' the node['ipaddress'] value
-			shutit.send('''sed -i 's/#{node..ipaddress..}/192.168.2.14/g' /root/chef-solo-example/cookbooks/cookbook-openshift3/attributes/default.rb''')
-			shutit.send('''sed -i "s/node..ipaddress../'192.168.2.14'/g" /root/chef-solo-example/cookbooks/cookbook-openshift3/attributes/default.rb''')
+			shutit.send('''sed -i 's/#{node..ipaddress..}/''' + ip_addr + '''/g' /root/chef-solo-example/cookbooks/cookbook-openshift3/attributes/default.rb''')
+			shutit.send("""sed -i "s/node..ipaddress../'""" + ip_addr + """'/g" /root/chef-solo-example/cookbooks/cookbook-openshift3/attributes/default.rb""")
 
 			shutit.send('curl -L https://supermarket.chef.io/cookbooks/iptables/download | tar -zxvf -')
 			shutit.send('curl -L https://supermarket.chef.io/cookbooks/yum/versions/3.9.0/download | tar -zxvf -')
