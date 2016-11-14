@@ -13,8 +13,8 @@ class shutit_openshift_cluster(ShutItModule):
 		gui = shutit.cfg[self.module_id]['gui']
 		memory = shutit.cfg[self.module_id]['memory']
 		home_dir = os.path.expanduser('~')
-		machine_names = ('master1','master2','etcd1','etcd2','etcd3','node1','openshiftcluster','etcd4','etcd5','etcd6')
-		machines = ('master1.vagrant.test','master2.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test','openshift-cluster.vagrant.test','etcd4.vagrant.test','etcd5.vagrant.test','etcd6.vagrant.test')
+		machine_names = ('master1','master2','etcd1','etcd2','etcd3','node1','openshift_cluster','etcd4','etcd5','etcd6')
+		machines = ('master1.vagrant.test','master2.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test','openshift_cluster.vagrant.test','etcd4.vagrant.test','etcd5.vagrant.test','etcd6.vagrant.test')
 		module_name = 'shutit_openshift_cluster_' + ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(6))
 		# TODO: needs vagrant 1.8.6+
 		shutit.send('rm -rf ' + home_dir + '/' + module_name + ' && mkdir -p ' + home_dir + '/' + module_name + ' && cd ~/' + module_name)
@@ -46,10 +46,10 @@ Vagrant.configure("2") do |config|
     master2.vm.hostname = "master2.vagrant.test"
   end
 
-  config.vm.define "openshiftcluster" do |openshiftcluster|
-    openshiftcluster.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    openshiftcluster.vm.network :private_network, ip: "192.168.2.13"
-    openshiftcluster.vm.hostname = "openshift-cluster.vagrant.test"
+  config.vm.define "openshift_cluster" do |openshift_cluster|
+    openshift_cluster.vm.box = ''' + '"' + vagrant_image + '"' + '''
+    openshift_cluster.vm.network :private_network, ip: "192.168.2.13"
+    openshift_cluster.vm.hostname = "openshift_cluster.vagrant.test"
   end
 
   config.vm.define "etcd1" do |etcd1|
@@ -121,7 +121,6 @@ end''')
 		shutit.install('pyOpenSSL')
 		shutit.install('etcd') # For the client
 		shutit.send('git clone --depth=1 https://github.com/openshift/openshift-ansible -b release-1.3')
-		shutit.multisend('ssh-keygen',{'Enter file':'','Enter passphrase':'','Enter same pass':''})
 		shutit.send_file('/etc/ansible/hosts','''# Create an OSEv3 group that contains the master, nodes, etcd, and lb groups.
 # The lb group lets Ansible configure HAProxy as the load balancing solution.
 # Comment lb out if your load balancer is pre-configured.
@@ -147,8 +146,8 @@ deployment_type=origin
 # or to one or all of the masters defined in the inventory if no load
 # balancer is present.
 openshift_master_cluster_method=native
-openshift_master_cluster_hostname=openshift-cluster.vagrant.test
-openshift_master_cluster_public_hostname=openshift-cluster.vagrant.test
+openshift_master_cluster_hostname=openshift_cluster.vagrant.test
+openshift_master_cluster_public_hostname=openshift_cluster.vagrant.test
 
 # apply updated node defaults
 openshift_node_kubelet_args={'pods-per-core': ['10'], 'max-pods': ['250'], 'image-gc-high-threshold': ['90'], 'image-gc-low-threshold': ['80']}
@@ -172,16 +171,26 @@ etcd3.vagrant.test
 
 # Specify load balancer host
 [lb]
-openshift-cluster.vagrant.test
+openshift_cluster.vagrant.test
 
 # host group for nodes, includes region info
 [nodes]
 master[1:2].vagrant.test openshift_node_labels="{'region': 'infra', 'zone': 'default'}"
 node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"''')
-		for machine in machines:
+		shutit.logout()
+		shutit.logout()
+		for machine in machine_names:
+			shutit.login(command='vagrant ssh ' + machine)
+			shutit.login(command='sudo su - ')
+			shutit.multisend('ssh-keygen',{'Enter file':'','Enter passphrase':'','Enter same pass':''})
 			# Set up ansible.
-			shutit.multisend('ssh-copy-id root@' + machine,{'ontinue connecting':'yes','assword':'origin'})
-			shutit.multisend('ssh-copy-id root@' + machine + '.vagrant.test',{'ontinue connecting':'yes','assword':'origin'})
+			for othermachine in machine_names:
+				shutit.multisend('ssh-copy-id root@' + othermachine,{'ontinue connecting':'yes','assword':'origin'})
+				shutit.multisend('ssh-copy-id root@' + othermachine + '.vagrant.test',{'ontinue connecting':'yes','assword':'origin'})
+			shutit.logout()
+			shutit.logout()
+		shutit.login(command='vagrant ssh master1')
+		shutit.login(command='sudo su - ')
 		while True:
 			shutit.multisend('ansible-playbook -vvv ~/openshift-ansible/playbooks/byo/config.yml 2>&1 | tee -a ansible.log',{'ontinue connecting':'yes'})
 			if shutit.send_and_match_output('oc get nodes','.*node1.vagrant.test     Ready.*'):
@@ -196,7 +205,7 @@ node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
 		# TODO: https://github.com/openshift/origin/tree/master/examples/data-population
 		shutit.send('cd data-population')
 		shutit.send('ln -s /etc/origin openshift.local.config')
-		shutit.send("""sed -i 's/10.0.2.15/openshift-cluster/g' common.sh""")
+		shutit.send("""sed -i 's/10.0.2.15/openshift_cluster/g' common.sh""")
 		#shutit.send('./populate.sh')
 		shutit.logout()
 		shutit.logout()
@@ -233,44 +242,46 @@ node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
 			shutit.logout()
 
 		# Generate certs for new node
-		shutit.login(command='vagrant ssh master1')
+		shutit.login(command='vagrant ssh etcd1')
 		shutit.login(command='sudo su - ')
 		etcd_openssl_conf = '/etc/etcd/openssl.conf'
-		shutit.send('ETCDSERVER=etcd4.vagrant.test')
-		shutit.send('ETCDIP=192.168.2.17')
-		shutit.send('mkdir -p /etc/etcd/generated_certs/etcd-${ETCDSERVER}')
-		shutit.send('cd /etc/etcd/generated_certs/etcd-${ETCDSERVER}')
-		shutit.send('cp /etc/etcd/ca.crt .')
-		shutit.send('export SAN=IP:${ETCDIP}')
-		shutit.send('openssl req -new -keyout peer.key -config /etc/etcd/ca/openssl.cnf -out peer.csr -reqexts etcd_v3_req -batch -nodes -subj /CN=${ETCDSERVER}')
-		shutit.send('openssl ca -name etcd_ca -config /etc/etcd/ca/openssl.cnf -out peer.crt -in peer.csr -extensions etcd_v3_ca_peer -batch')
-		shutit.send('openssl req -new -keyout server.key -config /etc/etcd/ca/openssl.cnf -out server.csr -reqexts etcd_v3_req -batch -nodes -subj /CN=${ETCDSERVER}')
-		shutit.send('openssl ca -name etcd_ca -config /etc/etcd/ca/openssl.cnf -out server.crt -in server.csr -extensions etcd_v3_ca_server -batch')
-		shutit.send('tar -czvf /etc/etcd/generated_certs/etcd-${ETCDSERVER}.tgz -C /etc/etcd/generated_certs/etcd-${ETCDSERVER} .')
-		shutit.send('cd ..')
-		shutit.multisend('scp etcd-etcd4.vagrant.test.tgz vagrant@etcd4:',{'assword','vagrant'})
-		shutit.multisend('scp /etc/etcd/etcd.conf vagrant@etcd4:',{'assword','vagrant'})
-
-		# Add node and get the output
-		etcd_config = shutit.send_and_get_output('etcdctl --endpoints https://192.168.2.14:2379,https://192.168.2.15:2379,https://192.168.2.16:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add etcd4.vagrant.test https://192.168.2.17:2380',note='Add node to cluster')
-		shutit.logout()
-		shutit.logout()
-
-		# Set up node
-		shutit.login(command='vagrant ssh etcd4')
-		shutit.login(command='sudo su - ')
-		shutit.install('etcd')
-		shutit.send('cd /etc/etcd/')
-		shutit.send('tar -zxf /home/vagrant/etcd-etcd4.vagrant.test.tgz')
-		shutit.send('chown etcd:etcd /etc/etcd/ca.crt /etc/etcd/server.key /etc/etcd/server.crt /etc/etcd/peer.key /etc/etcd/peer.crt')
-		shutit.send('cp /home/vagrant/etcd.conf /etc/etcd')
-		shutit.send('chown root:root /etc/etcd/etcd.conf')
-		shutit.send('''cat >> /etc/etcd/etcd.conf << END
+		for newnode in ('etcd4','etcd5','etcd6'):
+			shutit.send('ETCDSERVER=' + newnode + '.vagrant.test')
+			if newnode == 'etcd4':
+				shutit.send('ETCDIP=192.168.2.17')
+			elif newnode == 'etcd5':
+				shutit.send('ETCDIP=192.168.2.18')
+			elif newnode == 'etcd6':
+				shutit.send('ETCDIP=192.168.2.19')
+			shutit.send('mkdir -p /etc/etcd/generated_certs/etcd-${ETCDSERVER}')
+			shutit.send('cd /etc/etcd/generated_certs/etcd-${ETCDSERVER}')
+			shutit.send('cp /etc/etcd/ca.crt .')
+			shutit.send('export SAN=IP:${ETCDIP}')
+			shutit.send('openssl req -new -keyout peer.key -config /etc/etcd/ca/openssl.cnf -out peer.csr -reqexts etcd_v3_req -batch -nodes -subj /CN=${ETCDSERVER}')
+			shutit.send('openssl ca -name etcd_ca -config /etc/etcd/ca/openssl.cnf -out peer.crt -in peer.csr -extensions etcd_v3_ca_peer -batch')
+			shutit.send('openssl req -new -keyout server.key -config /etc/etcd/ca/openssl.cnf -out server.csr -reqexts etcd_v3_req -batch -nodes -subj /CN=${ETCDSERVER}')
+			shutit.send('openssl ca -name etcd_ca -config /etc/etcd/ca/openssl.cnf -out server.crt -in server.csr -extensions etcd_v3_ca_server -batch')
+			shutit.send('tar -czvf /etc/etcd/generated_certs/etcd-${ETCDSERVER}.tgz -C /etc/etcd/generated_certs/etcd-${ETCDSERVER} .')
+			shutit.send('cd ..')
+			shutit.multisend('scp etcd-etcd4.vagrant.test.tgz vagrant@' + newnode + ':',{'onnecting':'yes','assword':'vagrant'})
+			shutit.multisend('scp /etc/etcd/etcd.conf vagrant@' + newnode + ':',{'onnecting':'yes','assword':'vagrant'})
+			# Add node and get the output
+			etcd_config = shutit.send_and_get_output('etcdctl --endpoints https://192.168.2.14:2379,https://192.168.2.15:2379,https://192.168.2.16:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add ' + newnode + '.vagrant.test https://${ETCDIP}:2380',note='Add node to cluster')
+			shutit.install('etcd')
+			shutit.send('cd /etc/etcd/')
+			shutit.send('tar -zxf /home/vagrant/etcd-' + newnode + '.vagrant.test.tgz')
+			shutit.send('chown etcd:etcd /etc/etcd/ca.crt /etc/etcd/server.key /etc/etcd/server.crt /etc/etcd/peer.key /etc/etcd/peer.crt')
+			shutit.send('cp /home/vagrant/etcd.conf /etc/etcd')
+			shutit.send('chown root:root /etc/etcd/etcd.conf')
+			shutit.send('''cat >> /etc/etcd/etcd.conf << END
 ''' + etcd_config + '''
 END''')
-		shutit.pause_point('Try starting up etcd')
-		shutit.logout()
-		shutit.logout()
+			shutit.logout()
+			shutit.logout()
+		shutit.pause_point('Try starting up etcd on each node')
+		# TODO: update chef scritps?
+		# TODO: update master config
+		# TODO: bring cluster back up
 
 # OLD
 		# Chef variables
@@ -297,28 +308,28 @@ END''')
 #          link_type :hard
 #        end
 
-#        #cwd "#{node['cookbook-openshift3']['master_generated_certs_dir']}/openshift-master-#{master_server['fqdn']}"
-#		shutit.send('cd ' + master_generated_certs_dir + '/openshift-master-' + master_server_fqdn)
+#        #cwd "#{node['cookbook-openshift3']['master_generated_certs_dir']}/openshift_master-#{master_server['fqdn']}"
+#		shutit.send('cd ' + master_generated_certs_dir + '/openshift_master-' + master_server_fqdn)
 #        #environment 'SAN' => "IP:#{master_server['ipaddress']}"
 #		shutit.send('export SAN=' + master_server_ip)
 #		#command "openssl req -new -keyout #{node['cookbook-openshift3']['master_etcd_cert_prefix']}client.key -config #{node['cookbook-openshift3']['etcd_openssl_conf']} -out #{node['cookbook-openshift3']['master_etcd_cert_prefix']}client.csr -reqexts #{node['cookbook-openshift3']['etcd_req_ext']} -batch -nodes -subj /CN=#{master_server['fqdn']}"
 #		shutit.send('openssl req -new -keyout ' + master_etcd_cert_prefix + 'client.key -config ' + etcd_openssl_conf + ' -out ' + master_etcd_cert_prefix + 'client.csr -reqexts ' + master_etcd_cert_prefix + ' -batch -nodes -subj /CN=' + master_server_fqdn)
 #
-#		#cwd "#{node['cookbook-openshift3']['master_generated_certs_dir']}/openshift-master-#{master_server['fqdn']}"
-#		shutit.send('cd ' + master_generated_certs_dir + '/openshift-master-' + master_server_fqdn)
+#		#cwd "#{node['cookbook-openshift3']['master_generated_certs_dir']}/openshift_master-#{master_server['fqdn']}"
+#		shutit.send('cd ' + master_generated_certs_dir + '/openshift_master-' + master_server_fqdn)
 #		#environment 'SAN' => ''
 #		shutit.send('export SAN=""')
 #		#command "openssl ca -name #{node['cookbook-openshift3']['etcd_ca_name']} -config #{node['cookbook-openshift3']['etcd_openssl_conf']} -out #{node['cookbook-openshift3']['master_etcd_cert_prefix']}client.crt -in #{node['cookbook-openshift3']['master_etcd_cert_prefix']}client.csr -batch"
 #		shutit.send('openssl ca -name ' + etcd_ca_name + ' -config ' + etcd_openssl_conf + ' -out ' + master_etcd_cert_prefix + 'client.crt -in ' + master_etcd_cert_prefix + 'client.csr -batch')
 #
-#		#link "#{node['cookbook-openshift3']['master_generated_certs_dir']}/openshift-master-#{master_server['fqdn']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}ca.crt" do
+#		#link "#{node['cookbook-openshift3']['master_generated_certs_dir']}/openshift_master-#{master_server['fqdn']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}ca.crt" do
 #		#to "#{node['cookbook-openshift3']['etcd_ca_dir']}/ca.crt"
 #		#link_type :hard
-#		shutit.send('ln ' + master_generated_certs_dir + '/openshift-master-' + master_server_fqdn + '/' + master_etcd_cert_prefix + 'ca.crt ' + etcd_ca_dir + '/ca/crt')
+#		shutit.send('ln ' + master_generated_certs_dir + '/openshift_master-' + master_server_fqdn + '/' + master_etcd_cert_prefix + 'ca.crt ' + etcd_ca_dir + '/ca/crt')
 #
 #    execute "Create a tarball of the etcd master certs for #{master_server['fqdn']}" do
-#      command "tar czvf #{node['cookbook-openshift3']['master_generated_certs_dir']}/openshift-master-#{master_server['fqdn']}.tgz -C #{node['cookbook-openshift3']['master_generated_certs_dir']}/openshift-master-#{master_server['fqdn']} . "
-#      creates "#{node['cookbook-openshift3']['master_generated_certs_dir']}/openshift-master-#{master_server['fqdn']}.tgz"
+#      command "tar czvf #{node['cookbook-openshift3']['master_generated_certs_dir']}/openshift_master-#{master_server['fqdn']}.tgz -C #{node['cookbook-openshift3']['master_generated_certs_dir']}/openshift_master-#{master_server['fqdn']} . "
+#      creates "#{node['cookbook-openshift3']['master_generated_certs_dir']}/openshift_master-#{master_server['fqdn']}.tgz"
 #    end
 #		shutit.pause_point('add items on the fly: https://coreos.com/etcd/docs/latest/v2/admin_guide.html#member-migration')
 #		shutit.logout()
