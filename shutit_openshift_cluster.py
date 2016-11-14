@@ -263,7 +263,7 @@ node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
 			shutit.send('openssl ca -name etcd_ca -config /etc/etcd/ca/openssl.cnf -out server.crt -in server.csr -extensions etcd_v3_ca_server -batch')
 			shutit.send('tar -czvf /etc/etcd/generated_certs/etcd-${ETCDSERVER}.tgz -C /etc/etcd/generated_certs/etcd-${ETCDSERVER} .')
 			shutit.send('cd ..')
-			shutit.multisend('scp etcd-etcd4.vagrant.test.tgz vagrant@' + newnode + ':',{'onnecting':'yes','assword':'vagrant'})
+			shutit.multisend('scp etcd-' + newnode + '.vagrant.test.tgz vagrant@' + newnode + ':',{'onnecting':'yes','assword':'vagrant'})
 			shutit.multisend('scp /etc/etcd/etcd.conf vagrant@' + newnode + ':',{'onnecting':'yes','assword':'vagrant'})
 			# Add node and get the output
 			etcd_config = shutit.send_and_get_output('etcdctl --endpoints https://192.168.2.14:2379,https://192.168.2.15:2379,https://192.168.2.16:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add ' + newnode + '.vagrant.test https://${ETCDIP}:2380',note='Add node to cluster')
