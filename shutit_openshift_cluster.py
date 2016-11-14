@@ -13,8 +13,8 @@ class shutit_openshift_cluster(ShutItModule):
 		gui = shutit.cfg[self.module_id]['gui']
 		memory = shutit.cfg[self.module_id]['memory']
 		home_dir = os.path.expanduser('~')
-		machine_names = ('master1','master2','etcd1','etcd2','etcd3','node1','openshift_cluster','etcd4','etcd5','etcd6')
-		machines = ('master1.vagrant.test','master2.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test','openshift_cluster.vagrant.test','etcd4.vagrant.test','etcd5.vagrant.test','etcd6.vagrant.test')
+		machine_names = ('master1','master2','etcd1','etcd2','etcd3','node1','openshiftcluster','etcd4','etcd5','etcd6')
+		machines = ('master1.vagrant.test','master2.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test','openshiftcluster.vagrant.test','etcd4.vagrant.test','etcd5.vagrant.test','etcd6.vagrant.test')
 		module_name = 'shutit_openshift_cluster_' + ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(6))
 		# TODO: needs vagrant 1.8.6+
 		shutit.send('rm -rf ' + home_dir + '/' + module_name + ' && mkdir -p ' + home_dir + '/' + module_name + ' && cd ~/' + module_name)
@@ -46,10 +46,10 @@ Vagrant.configure("2") do |config|
     master2.vm.hostname = "master2.vagrant.test"
   end
 
-  config.vm.define "openshift_cluster" do |openshift_cluster|
-    openshift_cluster.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    openshift_cluster.vm.network :private_network, ip: "192.168.2.13"
-    openshift_cluster.vm.hostname = "openshift_cluster.vagrant.test"
+  config.vm.define "openshiftcluster" do |openshiftcluster|
+    openshiftcluster.vm.box = ''' + '"' + vagrant_image + '"' + '''
+    openshiftcluster.vm.network :private_network, ip: "192.168.2.13"
+    openshiftcluster.vm.hostname = "openshiftcluster.vagrant.test"
   end
 
   config.vm.define "etcd1" do |etcd1|
@@ -146,8 +146,8 @@ deployment_type=origin
 # or to one or all of the masters defined in the inventory if no load
 # balancer is present.
 openshift_master_cluster_method=native
-openshift_master_cluster_hostname=openshift_cluster.vagrant.test
-openshift_master_cluster_public_hostname=openshift_cluster.vagrant.test
+openshift_master_cluster_hostname=openshiftcluster.vagrant.test
+openshift_master_cluster_public_hostname=openshiftcluster.vagrant.test
 
 # apply updated node defaults
 openshift_node_kubelet_args={'pods-per-core': ['10'], 'max-pods': ['250'], 'image-gc-high-threshold': ['90'], 'image-gc-low-threshold': ['80']}
@@ -171,7 +171,7 @@ etcd3.vagrant.test
 
 # Specify load balancer host
 [lb]
-openshift_cluster.vagrant.test
+openshiftcluster.vagrant.test
 
 # host group for nodes, includes region info
 [nodes]
@@ -205,7 +205,7 @@ node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
 		# TODO: https://github.com/openshift/origin/tree/master/examples/data-population
 		shutit.send('cd data-population')
 		shutit.send('ln -s /etc/origin openshift.local.config')
-		shutit.send("""sed -i 's/10.0.2.15/openshift_cluster/g' common.sh""")
+		shutit.send("""sed -i 's/10.0.2.15/openshiftcluster/g' common.sh""")
 		#shutit.send('./populate.sh')
 		shutit.logout()
 		shutit.logout()
@@ -241,7 +241,7 @@ node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
 			shutit.logout()
 			shutit.logout()
 
-		# Generate certs for new node
+		# Generate certs for new nodes
 		shutit.login(command='vagrant ssh etcd1')
 		shutit.login(command='sudo su - ')
 		etcd_openssl_conf = '/etc/etcd/openssl.conf'
@@ -267,17 +267,19 @@ node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
 			shutit.multisend('scp /etc/etcd/etcd.conf vagrant@' + newnode + ':',{'onnecting':'yes','assword':'vagrant'})
 			# Add node and get the output
 			etcd_config = shutit.send_and_get_output('etcdctl --endpoints https://192.168.2.14:2379,https://192.168.2.15:2379,https://192.168.2.16:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add ' + newnode + '.vagrant.test https://${ETCDIP}:2380',note='Add node to cluster')
+			shutit.login(command='ssh ' + newnode)
 			shutit.install('etcd')
 			shutit.send('cd /etc/etcd/')
 			shutit.send('tar -zxf /home/vagrant/etcd-' + newnode + '.vagrant.test.tgz')
 			shutit.send('chown etcd:etcd /etc/etcd/ca.crt /etc/etcd/server.key /etc/etcd/server.crt /etc/etcd/peer.key /etc/etcd/peer.crt')
-			shutit.send('cp /home/vagrant/etcd.conf /etc/etcd')
+			shutit.send('rm -f /etc/etcd/etcd.conf && cp /home/vagrant/etcd.conf /etc/etcd')
 			shutit.send('chown root:root /etc/etcd/etcd.conf')
 			shutit.send('''cat >> /etc/etcd/etcd.conf << END
 ''' + etcd_config + '''
 END''')
 			shutit.logout()
-			shutit.logout()
+		shutit.logout()
+		shutit.logout()
 		shutit.pause_point('Try starting up etcd on each node')
 		# TODO: update chef scritps?
 		# TODO: update master config
