@@ -249,10 +249,13 @@ node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
 			shutit.send('ETCDSERVER=' + newnode + '.vagrant.test')
 			if newnode == 'etcd4':
 				shutit.send('ETCDIP=192.168.2.17')
+				etcdip = '192.168.2.17'
 			elif newnode == 'etcd5':
 				shutit.send('ETCDIP=192.168.2.18')
+				etcdip = '192.168.2.18'
 			elif newnode == 'etcd6':
 				shutit.send('ETCDIP=192.168.2.19')
+				etcdip = '192.168.2.19'
 			shutit.send('mkdir -p /etc/etcd/generated_certs/etcd-${ETCDSERVER}')
 			shutit.send('cd /etc/etcd/generated_certs/etcd-${ETCDSERVER}')
 			shutit.send('cp /etc/etcd/ca.crt .')
@@ -266,7 +269,10 @@ node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
 			shutit.multisend('scp etcd-' + newnode + '.vagrant.test.tgz vagrant@' + newnode + ':',{'onnecting':'yes','assword':'vagrant'})
 			shutit.multisend('scp /etc/etcd/etcd.conf vagrant@' + newnode + ':',{'onnecting':'yes','assword':'vagrant'})
 			# Add node and get the output
-			etcd_config = shutit.send_and_get_output('etcdctl --endpoints https://192.168.2.14:2379,https://192.168.2.15:2379,https://192.168.2.16:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add ' + newnode + '.vagrant.test https://${ETCDIP}:2380',note='Add node to cluster')
+			shutit.logout()
+			shutit.login(command='ssh master1')
+			etcd_config = shutit.send_and_get_output('etcdctl --endpoints https://192.168.2.14:2379,https://192.168.2.15:2379,https://192.168.2.16:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add ' + newnode + '.vagrant.test https://${ETCDIP}:2380 | grep ^ETCD',note='Add node to cluster')
+			shutit.logout()
 			shutit.login(command='ssh ' + newnode)
 			shutit.install('etcd')
 			shutit.send('cd /etc/etcd/')
@@ -274,13 +280,20 @@ node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
 			shutit.send('chown etcd:etcd /etc/etcd/ca.crt /etc/etcd/server.key /etc/etcd/server.crt /etc/etcd/peer.key /etc/etcd/peer.crt')
 			shutit.send('rm -f /etc/etcd/etcd.conf && cp /home/vagrant/etcd.conf /etc/etcd')
 			shutit.send('chown root:root /etc/etcd/etcd.conf')
+			shutit.send(r"""sed -i 's/ETCD_LISTEN_PEER_URLS=https:\/\/192.168.2.17:2380/ETCD_LISTEN_PEER_URLS=https:\/\/""" + etcdip + """:2380/g' /etc/etcd/etcd.conf""")
+			shutit.send(r"""sed -i 's/ETCD_LISTEN_CLIENT_URLS=https:\/\/192.168.2.17:2379/ETCD_LISTEN_CLIENT_URLS=https:\/\/""" + etcdip + """:2379/g' /etc/etcd/etcd.conf""")
+			shutit.send(r"""sed -i 's/ETCD_INITIAL_ADVERTISE_PEER_URLS=https:\/\/192.168.2.17:2380/ETCD_INITIAL_ADVERTISE_PEER_URLS=https:\/\/""" + etcdip + """:2380/g' /etc/etcd/etcd.conf""")
+			shutit.send(r"""sed -i 's/ETCD_INITIAL_ADVERTISE_CLIENT_URLS=https:\/\/192.168.2.17:2379/ETCD_INITIAL_ADVERTISE_CLIENT_URLS=https:\/\/""" + etcdip + """:2379/g' /etc/etcd/etcd.conf""")
+			shutit.send(r"""sed -i 's/^ETCD_NAME=.*//' /etc/etcd/etcd.conf""")
+			shutit.send(r"""sed -i 's/^ETCD_INITIAL_CLUSTER=.*//' /etc/etcd/etcd.conf""")
+			shutit.send(r"""sed -i 's/^ETCD_INITIAL_CLUSTER_STATE=.*//' /etc/etcd/etcd.conf""")
 			shutit.send('''cat >> /etc/etcd/etcd.conf << END
 ''' + etcd_config + '''
 END''')
 			shutit.logout()
+			shutit.pause_point('Try starting up etcd on ' + newnode)
 		shutit.logout()
 		shutit.logout()
-		shutit.pause_point('Try starting up etcd on each node')
 		# TODO: update chef scritps?
 		# TODO: update master config
 		# TODO: bring cluster back up
