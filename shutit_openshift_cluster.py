@@ -232,17 +232,53 @@ node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
 			shutit.logout()
 			shutit.logout()
 
+		# Generate certs for new node
 		shutit.login(command='vagrant ssh master1')
 		shutit.login(command='sudo su - ')
-		# Chef variables
-		master_generate_certs_dir = '/var/www/html/master/generated_certs'
-		master_etcd_cert_prefix = 'master.etcd-'
-		master_server_fqdn = 'master1.vagrant.test'
-		master_server_ip = '192.168.2.2'
-		master_etcd_cert_prefix = 'etcd_v3_req'
 		etcd_openssl_conf = '/etc/etcd/openssl.conf'
-		shutit.pause_point('Create certs with oadm')
+		shutit.send('ETCDSERVER=etcd4.vagrant.test')
+		shutit.send('ETCDIP=192.168.2.17')
+		shutit.send('mkdir -p /etc/etcd/generated_certs/etcd-${ETCDSERVER}')
+		shutit.send('cd /etc/etcd/generated_certs/etcd-${ETCDSERVER}')
+		shutit.send('cp /etc/etcd/ca.crt .')
+		shutit.send('export SAN=IP:${ETCDIP}')
+		shutit.send('openssl req -new -keyout peer.key -config /etc/etcd/ca/openssl.cnf -out peer.csr -reqexts etcd_v3_req -batch -nodes -subj /CN=${ETCDSERVER}')
+		shutit.send('openssl ca -name etcd_ca -config /etc/etcd/ca/openssl.cnf -out peer.crt -in peer.csr -extensions etcd_v3_ca_peer -batch')
+		shutit.send('openssl req -new -keyout server.key -config /etc/etcd/ca/openssl.cnf -out server.csr -reqexts etcd_v3_req -batch -nodes -subj /CN=${ETCDSERVER}')
+		shutit.send('openssl ca -name etcd_ca -config /etc/etcd/ca/openssl.cnf -out server.crt -in server.csr -extensions etcd_v3_ca_server -batch')
+		shutit.send('tar -czvf /etc/etcd/generated_certs/etcd-${ETCDSERVER}.tgz -C /etc/etcd/generated_certs/etcd-${ETCDSERVER} .')
+		shutit.send('cd ..')
+		shutit.multisend('scp etcd-etcd4.vagrant.test.tgz vagrant@etcd4:',{'assword','vagrant'})
+		shutit.multisend('scp /etc/etcd/etcd.conf vagrant@etcd4:',{'assword','vagrant'})
 
+		# Add node and get the output
+		etcd_config = shutit.send_and_get_output('etcdctl --endpoints https://192.168.2.14:2379,https://192.168.2.15:2379,https://192.168.2.16:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add etcd4.vagrant.test https://192.168.2.17:2380',note='Add node to cluster')
+		shutit.logout()
+		shutit.logout()
+
+		# Set up node
+		shutit.login(command='vagrant ssh etcd4')
+		shutit.login(command='sudo su - ')
+		shutit.install('etcd')
+		shutit.send('cd /etc/etcd/')
+		shutit.send('tar -zxf /home/vagrant/etcd-etcd4.vagrant.test.tgz')
+		shutit.send('chown etcd:etcd /etc/etcd/ca.crt /etc/etcd/server.key /etc/etcd/server.crt /etc/etcd/peer.key /etc/etcd/peer.crt')
+		shutit.send('cp /home/vagrant/etcd.conf /etc/etcd')
+		shutit.send('chown root:root /etc/etcd/etcd.conf')
+		shutit.send('''cat >> /etc/etcd/etcd.conf << END
+''' + etcd_config + '''
+END''')
+		shutit.pause_point('Try starting up etcd')
+		shutit.logout()
+		shutit.logout()
+
+# OLD
+		# Chef variables
+		#master_generate_certs_dir = '/var/www/html/master/generated_certs'
+		#master_etcd_cert_prefix = 'master.etcd-'
+		#master_server_fqdn = 'master1.vagrant.test'
+		#master_server_ip = '192.168.2.2'
+		#master_etcd_cert_prefix = 'etcd_v3_req'
 #		# etcd_master == master1 in this chef script
 #		for j
 #        %w(server peer).each do |etcd_certificates|
@@ -284,9 +320,9 @@ node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
 #      command "tar czvf #{node['cookbook-openshift3']['master_generated_certs_dir']}/openshift-master-#{master_server['fqdn']}.tgz -C #{node['cookbook-openshift3']['master_generated_certs_dir']}/openshift-master-#{master_server['fqdn']} . "
 #      creates "#{node['cookbook-openshift3']['master_generated_certs_dir']}/openshift-master-#{master_server['fqdn']}.tgz"
 #    end
-		shutit.pause_point('add items on the fly: https://coreos.com/etcd/docs/latest/v2/admin_guide.html#member-migration')
-		shutit.logout()
-		shutit.logout()
+#		shutit.pause_point('add items on the fly: https://coreos.com/etcd/docs/latest/v2/admin_guide.html#member-migration')
+#		shutit.logout()
+#		shutit.logout()
 
 		# OLD METHOD
 		## Stop etcd
