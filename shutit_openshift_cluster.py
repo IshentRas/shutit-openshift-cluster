@@ -271,7 +271,7 @@ node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
 			# Add node and get the output
 			shutit.login(command='ssh master1')
 			shutit.send('etcdctl --endpoints https://192.168.2.14:2379,https://192.168.2.15:2379,https://192.168.2.16:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add ' + newnode + '.vagrant.test https://' + etcdip + ':2380 | grep ^ETCD > /tmp/out',note='Add node to cluster')
-			shutit.send_and_get_output('cat /tmp/out')
+			etcd_config = shutit.send_and_get_output('cat /tmp/out')
 			shutit.logout()
 			shutit.login(command='ssh ' + newnode)
 			shutit.install('etcd')
