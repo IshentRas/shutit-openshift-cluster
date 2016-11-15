@@ -90,8 +90,7 @@ Vagrant.configure("2") do |config|
   end
 end''')
 		password = shutit.get_env_pass()
-		# TODO: provider
-		shutit.multisend('vagrant up --provider virtualbox',{'assword':password},timeout=99999)
+		shutit.multisend('vagrant up --provider ' + shutit.cfg['shutit-library.virtualization.virtualization.virtualization']['virt_method'],{'assword':password},timeout=99999)
 		for machine in machine_names:
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
