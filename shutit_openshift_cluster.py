@@ -128,9 +128,7 @@ end''')
 			shutit.send('mkdir -p /root/chef-solo-example/environments')
 			shutit.send('mkdir -p /root/chef-solo-example/logs')
 			shutit.send('cd /root/chef-solo-example/cookbooks')
-			# Need my one for the etcd change
-			#shutit.send('git clone https://github.com/IshentRas/cookbook-openshift3')
-			shutit.send('git clone https://github.com/ianmiell/cookbook-openshift3')
+			shutit.send('git clone https://github.com/IshentRas/cookbook-openshift3')
 			# Filthy hack to 'override' the node['ipaddress'] value
 			shutit.send('''sed -i 's/#{node..ipaddress..}/192.168.2.14/g' /root/chef-solo-example/cookbooks/cookbook-openshift3/attributes/default.rb''')
 			shutit.send('''sed -i "s/node..ipaddress../'192.168.2.14'/g" /root/chef-solo-example/cookbooks/cookbook-openshift3/attributes/default.rb''')
