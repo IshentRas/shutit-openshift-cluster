@@ -269,7 +269,6 @@ node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
 			shutit.multisend('scp etcd-' + newnode + '.vagrant.test.tgz vagrant@' + newnode + ':',{'onnecting':'yes','assword':'vagrant'})
 			shutit.multisend('scp /etc/etcd/etcd.conf vagrant@' + newnode + ':',{'onnecting':'yes','assword':'vagrant'})
 			# Add node and get the output
-			shutit.logout()
 			shutit.login(command='ssh master1')
 			etcd_config = shutit.send_and_get_output('etcdctl --endpoints https://192.168.2.14:2379,https://192.168.2.15:2379,https://192.168.2.16:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add ' + newnode + '.vagrant.test https://${ETCDIP}:2380 | grep ^ETCD',note='Add node to cluster')
 			shutit.logout()
