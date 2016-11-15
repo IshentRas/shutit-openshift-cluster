@@ -99,8 +99,7 @@ end''')
 		#machines = ('master1.vagrant.test','master2.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test','openshift-cluster.vagrant.test')
 		machines = ('master1.vagrant.test','master2.vagrant.test','master3.vagrant.test','node1.vagrant.test','openshift-cluster.vagrant.test')
 		password = shutit.get_env_pass()
-		# TODO: provider
-		shutit.multisend('vagrant up --provider virtualbox',{'assword':password},timeout=99999)
+		shutit.multisend('vagrant up --provider ' + shutit.cfg['shutit-library.virtualization.virtualization.virtualization']['virt_method'],{'assword':password},timeout=99999)
 		for machine in machine_names:
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
