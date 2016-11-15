@@ -437,6 +437,7 @@ END''')
 		shutit.get_config(self.module_id,'gui',default='false')
 		#shutit.get_config(self.module_id,'memory',default='1024')
 		shutit.get_config(self.module_id,'memory',default='512')
+		shutit.get_config('shutit-library.virtualization.virtualization.virtualization','virt_method',default='virtualbox')
 		return True
 
 	def test(self, shutit):
