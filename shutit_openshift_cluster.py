@@ -93,7 +93,7 @@ end''')
 		etcd5_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd5.vagrant.test | awk '{print $2}'""")
 		etcd6_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd6.vagrant.test | awk '{print $2}'""")
 		node1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^node1.vagrant.test | awk '{print $2}'""")
-		openshiftcluster_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^openshiftcluster.vagrant.test' | awk '{print $2}'""")
+		openshiftcluster_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^openshiftcluster.vagrant.test | awk '{print $2}'""")
 		for machine in machine_names:
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
