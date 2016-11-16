@@ -183,16 +183,16 @@ solo true''')
       ],
       "etcd_servers": [
         {
-          "fqdn": "master1.vagrant.test",
-          "ipaddress": "''' + master1_ip + '''"
+          "fqdn": "etcd1.vagrant.test",
+          "ipaddress": "''' + etcd1_ip + '''"
         },
         {
-          "fqdn": "master2.vagrant.test",
-          "ipaddress": "''' + master2_ip + '''"
+          "fqdn": "etcd2.vagrant.test",
+          "ipaddress": "''' + etcd2_ip + '''"
         },
        {
-          "fqdn": "master3.vagrant.test",
-          "ipaddress": "''' + master3_ip + '''"
+          "fqdn": "etcd3.vagrant.test",
+          "ipaddress": "''' + etcd3_ip + '''"
         }
       ],
       "node_servers": [
