@@ -54,50 +54,46 @@ Vagrant.configure("2") do |config|
     openshiftcluster.vm.network :private_network, ip: "192.168.2.13"
     openshiftcluster.vm.hostname = "openshift-cluster.vagrant.test"
   end
-#
-#  config.vm.define "etcd1" do |etcd1|
-#    etcd1.vm.box = ''' + '"' + vagrant_image + '"' + '''
-#    etcd1.vm.network :private_network, ip: "192.168.2.14"
-#    etcd1.vm.hostname = "etcd1.vagrant.test"
-#  end
-#  config.vm.define "etcd2" do |etcd2|
-#    etcd2.vm.box = ''' + '"' + vagrant_image + '"' + '''
-#    etcd2.vm.network :private_network, ip: "192.168.2.15"
-#    etcd2.vm.hostname = "etcd2.vagrant.test"
-#  end
-#  config.vm.define "etcd3" do |etcd3|
-#    etcd3.vm.box = ''' + '"' + vagrant_image + '"' + '''
-#    etcd3.vm.network :private_network, ip: "192.168.2.16"
-#    etcd3.vm.hostname = "etcd3.vagrant.test"
-#  end
-##  config.vm.define "etcd4" do |etcd4|
-##    etcd4.vm.box = ''' + '"' + vagrant_image + '"' + '''
-##    etcd4.vm.network :private_network, ip: "192.168.2.17"
-##    etcd4.vm.hostname = "etcd4.vagrant.test"
-##  end
-##  config.vm.define "etcd5" do |etcd5|
-##    etcd5.vm.box = ''' + '"' + vagrant_image + '"' + '''
-##    etcd5.vm.network :private_network, ip: "192.168.2.18"
-##    etcd5.vm.hostname = "etcd5.vagrant.test"
-##  end
-##  config.vm.define "etcd6" do |etcd6|
-##    etcd6.vm.box = ''' + '"' + vagrant_image + '"' + '''
-##    etcd6.vm.network :private_network, ip: "192.168.2.19"
-##    etcd6.vm.hostname = "etcd6.vagrant.test"
-##  end
-##
+
+  config.vm.define "etcd1" do |etcd1|
+    etcd1.vm.box = ''' + '"' + vagrant_image + '"' + '''
+    etcd1.vm.network :private_network, ip: "192.168.2.14"
+    etcd1.vm.hostname = "etcd1.vagrant.test"
+  end
+  config.vm.define "etcd2" do |etcd2|
+    etcd2.vm.box = ''' + '"' + vagrant_image + '"' + '''
+    etcd2.vm.network :private_network, ip: "192.168.2.15"
+    etcd2.vm.hostname = "etcd2.vagrant.test"
+  end
+  config.vm.define "etcd3" do |etcd3|
+    etcd3.vm.box = ''' + '"' + vagrant_image + '"' + '''
+    etcd3.vm.network :private_network, ip: "192.168.2.16"
+    etcd3.vm.hostname = "etcd3.vagrant.test"
+  end
+  config.vm.define "etcd4" do |etcd4|
+    etcd4.vm.box = ''' + '"' + vagrant_image + '"' + '''
+    etcd4.vm.network :private_network, ip: "192.168.2.17"
+    etcd4.vm.hostname = "etcd4.vagrant.test"
+  end
+  config.vm.define "etcd5" do |etcd5|
+    etcd5.vm.box = ''' + '"' + vagrant_image + '"' + '''
+    etcd5.vm.network :private_network, ip: "192.168.2.18"
+    etcd5.vm.hostname = "etcd5.vagrant.test"
+  end
+  config.vm.define "etcd6" do |etcd6|
+    etcd6.vm.box = ''' + '"' + vagrant_image + '"' + '''
+    etcd6.vm.network :private_network, ip: "192.168.2.19"
+    etcd6.vm.hostname = "etcd6.vagrant.test"
+  end
+
   config.vm.define "node1" do |node1|
     node1.vm.box = ''' + '"' + vagrant_image + '"' + '''
     node1.vm.network :private_network, ip: "192.168.2.24"
     node1.vm.hostname = "node1.vagrant.test"
   end
 end''')
-		#machine_names = ('master1','master2','etcd1','etcd2','etcd3','node1','openshiftcluster','etcd4','etcd5','etcd6')
-		#machine_names = ('master1','master2','etcd1','etcd2','etcd3','node1','openshiftcluster')
-		machine_names = ('master1','master2','master3','node1','openshiftcluster')
-		#machines = ('master1.vagrant.test','master2.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test','openshift-cluster.vagrant.test','etcd4.vagrant.test','etcd5.vagrant.test','etcd6.vagrant.test')
-		#machines = ('master1.vagrant.test','master2.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test','openshift-cluster.vagrant.test')
-		machines = ('master1.vagrant.test','master2.vagrant.test','master3.vagrant.test','node1.vagrant.test','openshift-cluster.vagrant.test')
+		machine_names = ('master1','master2','etcd1','etcd2','etcd3','node1','openshiftcluster','etcd4','etcd5','etcd6')
+		machines = ('master1.vagrant.test','master2.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test','openshift-cluster.vagrant.test','etcd4.vagrant.test','etcd5.vagrant.test','etcd6.vagrant.test')
 		password = shutit.get_env_pass()
 		shutit.multisend('vagrant up --provider ' + shutit.cfg['shutit-library.virtualization.virtualization.virtualization']['virt_method'],{'assword':password},timeout=99999)
 		for machine in machine_names:
@@ -159,8 +155,8 @@ solo true''')
   "override_attributes": {
     "cookbook-openshift3": {
       "openshift_HA": true,
-      "openshift_cluster_name": "openshift-cluster.vagrant.test",
-      "openshift_master_cluster_vip": "192.168.2.13",
+      "openshift_cluster_name": "master1.vagrant.test",
+      "openshift_master_cluster_vip": "192.168.2.2",
       "openshift_deployment_type": "origin",
       "master_servers": [
         {
@@ -188,16 +184,16 @@ solo true''')
       ],
       "etcd_servers": [
         {
-          "fqdn": "master1.vagrant.test",
-          "ipaddress": "192.168.2.2"
+          "fqdn": "etcd1.vagrant.test",
+          "ipaddress": "192.168.2.14"
         },
         {
-          "fqdn": "master2.vagrant.test",
-          "ipaddress": "192.168.2.3"
+          "fqdn": "etcd2.vagrant.test",
+          "ipaddress": "192.168.2.15"
         },
        {
-          "fqdn": "master3.vagrant.test",
-          "ipaddress": "192.168.2.4"
+          "fqdn": "etcd3.vagrant.test",
+          "ipaddress": "192.168.2.16"
         }
       ],
       "node_servers": [
@@ -227,10 +223,19 @@ solo true''')
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
 			if machine not in ('etcd4','etcd5','etcd6'):
-				shutit.send('echo "*/10 * * * * chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1" | crontab')
+				shutit.send('echo "*/5 * * * * chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1" | crontab')
 			shutit.logout()
 			shutit.logout()
-		shutit.pause_point('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3] -c ~/chef-solo-example/solo.rb')
+		
+		# Wait 15 minutes for everything to be ready
+		shutit.send('date && sleep $[60 * 15]',timeout=9999)
+		shutit.login(command='vagrant ssh ' + machine)
+		shutit.login(command='sudo su - ')
+		shutit.send('oc get all')
+		shutit.logout()
+		shutit.logout()
+
+		# TODO: set up core services
 
 		#shutit.send('git clone --depth=1 https://github.com/openshift/origin')
 		#shutit.send('cd origin/examples')
