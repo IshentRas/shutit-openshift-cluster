@@ -304,7 +304,7 @@ END''')
 		etcd2_id = shutit.send_and_get_output('cat /tmp/out')
 		shutit.send('etcdctl --endpoints https://192.168.2.17:2379,https://192.168.2.18:2379,https://192.168.2.19:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member remove ' + etcd2_id,note='Add node to cluster')
 
-		shutit.send("""etcdctl --endpoints https://192.168.2.17:2379,https://192.168.2.19:2379,https://192.168.2.15:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list | grep name.etcd3 | awk -F: '{print $1}' > /tmp/out""")
+		shutit.send("""etcdctl --endpoints https://192.168.2.17:2379,https://192.168.2.18:2379,https://192.168.2.19:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list | grep name.etcd3 | awk -F: '{print $1}' > /tmp/out""")
 		etcd3_id = shutit.send_and_get_output('cat /tmp/out')
 		shutit.send('etcdctl --endpoints https://192.168.2.17:2379,https://192.168.2.18:2379,https://192.168.2.19:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member remove ' + etcd3_id,note='Add node to cluster')
 		shutit.logout()
