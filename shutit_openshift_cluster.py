@@ -32,7 +32,6 @@ Vagrant.configure("2") do |config|
 
   config.vm.define "master1" do |master1|
     master1.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    master1.vm.network "private_network", ip: "192.168.2.2"
     master1.vm.hostname = "master1.vagrant.test"
     master1.vm.provider :virtualbox do |v|
       v.customize ["modifyvm", :id, "--memory", "2048"]
@@ -41,55 +40,60 @@ Vagrant.configure("2") do |config|
   end
   config.vm.define "master2" do |master2|
     master2.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    master2.vm.network "private_network", ip: "192.168.2.3"
     master2.vm.hostname = "master2.vagrant.test"
+  end
+  config.vm.define "master3" do |master3|    
+    master3.vm.box = ''' + '"' + vagrant_image + '"' + '''
+    master3.vm.hostname = "master3.vagrant.test"
   end
 
   config.vm.define "openshiftcluster" do |openshiftcluster|
     openshiftcluster.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    openshiftcluster.vm.network :private_network, ip: "192.168.2.13"
     openshiftcluster.vm.hostname = "openshiftcluster.vagrant.test"
   end
 
   config.vm.define "etcd1" do |etcd1|
     etcd1.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    etcd1.vm.network :private_network, ip: "192.168.2.14"
     etcd1.vm.hostname = "etcd1.vagrant.test"
   end
   config.vm.define "etcd2" do |etcd2|
     etcd2.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    etcd2.vm.network :private_network, ip: "192.168.2.15"
     etcd2.vm.hostname = "etcd2.vagrant.test"
   end
   config.vm.define "etcd3" do |etcd3|
     etcd3.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    etcd3.vm.network :private_network, ip: "192.168.2.16"
     etcd3.vm.hostname = "etcd3.vagrant.test"
   end
   config.vm.define "etcd4" do |etcd4|
     etcd4.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    etcd4.vm.network :private_network, ip: "192.168.2.17"
     etcd4.vm.hostname = "etcd4.vagrant.test"
   end
   config.vm.define "etcd5" do |etcd5|
     etcd5.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    etcd5.vm.network :private_network, ip: "192.168.2.18"
     etcd5.vm.hostname = "etcd5.vagrant.test"
   end
   config.vm.define "etcd6" do |etcd6|
     etcd6.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    etcd6.vm.network :private_network, ip: "192.168.2.19"
     etcd6.vm.hostname = "etcd6.vagrant.test"
   end
 
   config.vm.define "node1" do |node1|
     node1.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    node1.vm.network :private_network, ip: "192.168.2.24"
     node1.vm.hostname = "node1.vagrant.test"
   end
 end''')
 		password = shutit.get_env_pass()
 		shutit.multisend('vagrant up --provider ' + shutit.cfg['shutit-library.virtualization.virtualization.virtualization']['virt_method'],{'assword':password},timeout=99999)
+		master1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^master1.vagrant.test' | awk '{print $2}'""")
+		master2_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^master2.vagrant.test' | awk '{print $2}'""")
+		etcd1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd1.vagrant.test' | awk '{print $2}'""")
+		etcd2_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd2.vagrant.test' | awk '{print $2}'""")
+		etcd3_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd3.vagrant.test' | awk '{print $2}'""")
+		etcd4_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd4.vagrant.test' | awk '{print $2}'""")
+		etcd5_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd5.vagrant.test' | awk '{print $2}'""")
+		etcd6_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd6.vagrant.test' | awk '{print $2}'""")
+		node1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^node1.vagrant.test' | awk '{print $2}'""")
+		openshiftcluster_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^openshiftcluster.vagrant.test' | awk '{print $2}'""")
 		for machine in machine_names:
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
@@ -197,7 +201,7 @@ node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
 		shutit.send('oadm manage-node master1.vagrant.test --schedulable')
 		shutit.send('oadm manage-node master2.vagrant.test --schedulable')
 		# List the etcd members
-		shutit.send('etcdctl --endpoints https://192.168.2.14:2379,https://192.168.2.15:2379,https://192.168.2.16:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list')
+		shutit.send('etcdctl --endpoints https://' + etcd1_ip + ':2379,https://' + etcd2_ip + ':2379,https://' + etcd3_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list')
 		shutit.send('git clone --depth=1 https://github.com/openshift/origin')
 		shutit.send('cd origin/examples')
 		# TODO: https://github.com/openshift/origin/tree/master/examples/data-population
@@ -245,18 +249,15 @@ node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
 		for newnode in ('etcd4','etcd5','etcd6'):
 			shutit.send('ETCDSERVER=' + newnode + '.vagrant.test')
 			if newnode == 'etcd4':
-				shutit.send('ETCDIP=192.168.2.17')
-				etcdip = '192.168.2.17'
+				etcdip = etcd4_ip
 			elif newnode == 'etcd5':
-				shutit.send('ETCDIP=192.168.2.18')
-				etcdip = '192.168.2.18'
+				etcdip = etcd5_ip
 			elif newnode == 'etcd6':
-				shutit.send('ETCDIP=192.168.2.19')
-				etcdip = '192.168.2.19'
+				etcdip = etcd6_ip
 			shutit.send('mkdir -p /etc/etcd/generated_certs/etcd-${ETCDSERVER}')
 			shutit.send('cd /etc/etcd/generated_certs/etcd-${ETCDSERVER}')
 			shutit.send('cp /etc/etcd/ca.crt .')
-			shutit.send('export SAN=IP:${ETCDIP}')
+			shutit.send('export SAN=IP:' + etcdip)
 			shutit.send('openssl req -new -keyout peer.key -config /etc/etcd/ca/openssl.cnf -out peer.csr -reqexts etcd_v3_req -batch -nodes -subj /CN=${ETCDSERVER}')
 			shutit.send('openssl ca -name etcd_ca -config /etc/etcd/ca/openssl.cnf -out peer.crt -in peer.csr -extensions etcd_v3_ca_peer -batch')
 			shutit.send('openssl req -new -keyout server.key -config /etc/etcd/ca/openssl.cnf -out server.csr -reqexts etcd_v3_req -batch -nodes -subj /CN=${ETCDSERVER}')
@@ -267,7 +268,7 @@ node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
 			shutit.multisend('scp /etc/etcd/etcd.conf vagrant@' + newnode + ':',{'onnecting':'yes','assword':'vagrant'})
 			# Add node and get the output
 			shutit.login(command='ssh master1')
-			shutit.send('etcdctl --endpoints https://192.168.2.14:2379,https://192.168.2.15:2379,https://192.168.2.16:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add ' + newnode + '.vagrant.test https://' + etcdip + ':2380 | grep ^ETCD > /tmp/out',note='Add node to cluster')
+			shutit.send('etcdctl --endpoints https://' + etcd1_ip + ':2379,https://' + etcd2_ip + ':2379,https://' + etcd3_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add ' + newnode + '.vagrant.test https://' + etcdip + ':2380 | grep ^ETCD > /tmp/out',note='Add node to cluster')
 			etcd_config = shutit.send_and_get_output('cat /tmp/out')
 			shutit.logout()
 			shutit.login(command='ssh ' + newnode)
@@ -277,10 +278,10 @@ node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
 			shutit.send('chown etcd:etcd /etc/etcd/ca.crt /etc/etcd/server.key /etc/etcd/server.crt /etc/etcd/peer.key /etc/etcd/peer.crt')
 			shutit.send('rm -f /etc/etcd/etcd.conf && cp /home/vagrant/etcd.conf /etc/etcd')
 			shutit.send('chown root:root /etc/etcd/etcd.conf')
-			shutit.send(r"""sed -i 's/ETCD_LISTEN_PEER_URLS=https:\/\/192.168.2.14:2380/ETCD_LISTEN_PEER_URLS=https:\/\/""" + etcdip + """:2380/g' /etc/etcd/etcd.conf""")
-			shutit.send(r"""sed -i 's/ETCD_LISTEN_CLIENT_URLS=https:\/\/192.168.2.14:2379/ETCD_LISTEN_CLIENT_URLS=https:\/\/""" + etcdip + """:2379/g' /etc/etcd/etcd.conf""")
-			shutit.send(r"""sed -i 's/ETCD_INITIAL_ADVERTISE_PEER_URLS=https:\/\/192.168.2.14:2380/ETCD_INITIAL_ADVERTISE_PEER_URLS=https:\/\/""" + etcdip + """:2380/g' /etc/etcd/etcd.conf""")
-			shutit.send(r"""sed -i 's/ETCD_ADVERTISE_CLIENT_URLS=https:\/\/192.168.2.14:2379/ETCD_INITIAL_ADVERTISE_CLIENT_URLS=https:\/\/""" + etcdip + """:2379/g' /etc/etcd/etcd.conf""")
+			shutit.send(r"""sed -i 's/ETCD_LISTEN_PEER_URLS=https:\/\/""" + etcd1_ip + r""":2380/ETCD_LISTEN_PEER_URLS=https:\/\/""" + etcdip + """:2380/g' /etc/etcd/etcd.conf""")
+			shutit.send(r"""sed -i 's/ETCD_LISTEN_CLIENT_URLS=https:\/\/""" + etcd1_ip + r""":2379/ETCD_LISTEN_CLIENT_URLS=https:\/\/""" + etcdip + """:2379/g' /etc/etcd/etcd.conf""")
+			shutit.send(r"""sed -i 's/ETCD_INITIAL_ADVERTISE_PEER_URLS=https:\/\/""" + etcd1_ip + r""":2380/ETCD_INITIAL_ADVERTISE_PEER_URLS=https:\/\/""" + etcdip + """:2380/g' /etc/etcd/etcd.conf""")
+			shutit.send(r"""sed -i 's/ETCD_ADVERTISE_CLIENT_URLS=https:\/\/""" + etcd1_ip r""":2379/ETCD_INITIAL_ADVERTISE_CLIENT_URLS=https:\/\/""" + etcdip + """:2379/g' /etc/etcd/etcd.conf""")
 			shutit.send(r"""sed -i 's/^ETCD_NAME=.*//' /etc/etcd/etcd.conf""")
 			shutit.send(r"""sed -i 's/^ETCD_INITIAL_CLUSTER=.*//' /etc/etcd/etcd.conf""")
 			shutit.send(r"""sed -i 's/^ETCD_INITIAL_CLUSTER_STATE=.*//' /etc/etcd/etcd.conf""")
@@ -296,17 +297,17 @@ END''')
 		shutit.login(command='vagrant ssh master1')
 		shutit.login(command='sudo su - ')
 		# Note new list of endpoints
-		shutit.send("""etcdctl --endpoints https://192.168.2.17:2379,https://192.168.2.19:2379,https://192.168.2.15:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list | grep name.etcd1 | awk -F: '{print $1}' > /tmp/out""")
+		shutit.send("""etcdctl --endpoints https://""" + etcd4_ip + """:2379,https://""" + etcd5_ip + r""":2379,https://""" + etcd6_ip + r""":2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list | grep name.etcd1 | awk -F: '{print $1}' > /tmp/out""")
 		etcd1_id = shutit.send_and_get_output('cat /tmp/out')
-		shutit.send('etcdctl --endpoints https://192.168.2.17:2379,https://192.168.2.18:2379,https://192.168.2.19:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member remove ' + etcd1_id,note='Add node to cluster')
+		shutit.send('etcdctl --endpoints https://' + etcd4_ip + ':2379,https://' + etcd5_ip + r':2379,https://' + etcd6_ip + r':2379  --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member remove ' + etcd1_id,note='Add node to cluster')
 
-		shutit.send("""etcdctl --endpoints https://192.168.2.17:2379,https://192.168.2.19:2379,https://192.168.2.15:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list | grep name.etcd2 | awk -F: '{print $1}' > /tmp/out""")
+		shutit.send("""etcdctl --endpoints https://""" + etcd4_ip + """:2379,https://""" + etcd5_ip + r""":2379,https://""" + etcd6_ip + r""":2379  --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list | grep name.etcd2 | awk -F: '{print $1}' > /tmp/out""")
 		etcd2_id = shutit.send_and_get_output('cat /tmp/out')
-		shutit.send('etcdctl --endpoints https://192.168.2.17:2379,https://192.168.2.18:2379,https://192.168.2.19:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member remove ' + etcd2_id,note='Add node to cluster')
+		shutit.send('etcdctl --endpoints ' + etcd4_ip + ':2379,https://' + etcd5_ip + r':2379,https://' + etcd6_ip + r':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member remove ' + etcd2_id,note='Add node to cluster')
 
-		shutit.send("""etcdctl --endpoints https://192.168.2.17:2379,https://192.168.2.18:2379,https://192.168.2.19:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list | grep name.etcd3 | awk -F: '{print $1}' > /tmp/out""")
+		shutit.send("""etcdctl --endpoints https://""" + etcd4_ip + """:2379,https://""" + etcd5_ip + r""":2379,https://""" + etcd6_ip + r""":2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list | grep name.etcd3 | awk -F: '{print $1}' > /tmp/out""")
 		etcd3_id = shutit.send_and_get_output('cat /tmp/out')
-		shutit.send('etcdctl --endpoints https://192.168.2.17:2379,https://192.168.2.18:2379,https://192.168.2.19:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member remove ' + etcd3_id,note='Add node to cluster')
+		shutit.send('etcdctl --endpoints ' + etcd4_ip + ':2379,https://' + etcd5_ip + r':2379,https://' + etcd6_ip + r':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member remove ' + etcd3_id,note='Add node to cluster')
 		shutit.logout()
 		shutit.logout()
 
