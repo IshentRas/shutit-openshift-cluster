@@ -184,16 +184,16 @@ solo true''')
       ],
       "etcd_servers": [
         {
-          "fqdn": "etcd1.vagrant.test",
-          "ipaddress": "192.168.2.14"
+          "fqdn": "master1.vagrant.test",
+          "ipaddress": "192.168.2.2"
         },
         {
-          "fqdn": "etcd2.vagrant.test",
-          "ipaddress": "192.168.2.15"
+          "fqdn": "master2.vagrant.test",
+          "ipaddress": "192.168.2.3"
         },
        {
-          "fqdn": "etcd3.vagrant.test",
-          "ipaddress": "192.168.2.16"
+          "fqdn": "master3.vagrant.test",
+          "ipaddress": "192.168.2.4"
         }
       ],
       "node_servers": [
@@ -207,7 +207,7 @@ solo true''')
         },
         {
           "fqdn": "master2.vagrant.test",
-          "ipaddress": "192.168.2.4"
+          "ipaddress": "192.168.2.3"
         },
         {
           "fqdn": "master3.vagrant.test",
