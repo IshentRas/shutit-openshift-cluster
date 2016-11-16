@@ -229,7 +229,7 @@ solo true''')
 		
 		# Wait 15 minutes for everything to be ready
 		shutit.send('date && sleep $[60 * 15]',timeout=9999)
-		shutit.login(command='vagrant ssh ' + machine)
+		shutit.login(command='vagrant ssh master1')
 		shutit.login(command='sudo su - ')
 		shutit.send('oc get all')
 		shutit.logout()
