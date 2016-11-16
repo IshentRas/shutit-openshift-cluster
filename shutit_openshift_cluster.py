@@ -98,7 +98,7 @@ end''')
 			# See: https://access.redhat.com/articles/1320623
 			shutit.send('rm -fr /var/cache/yum/*')
 			shutit.send('yum clean all')
-			shutit.send('yum update -y')
+			shutit.send('yum update -y -q')
 			shutit.install('xterm')
 			shutit.install('net-tools')
 			shutit.send('''sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config''')
@@ -343,7 +343,7 @@ END''')
 		shutit.send("""sed -i 's/etcd2/etcd5/g' /etc/ansible/hosts""")
 		shutit.send("""sed -i 's/etcd3/etcd6/g' /etc/ansible/hosts""")
 		while True:
-			shutit.multisend('ansible-playbook -vvv ~/openshift-ansible/playbooks/byo/config.yml 2>&1 | tee -a ansible.log',{'ontinue connecting':'yes'})
+			shutit.multisend('ansible-playbook ~/openshift-ansible/playbooks/byo/config.yml 2>&1 | tee -a ansible.log',{'ontinue connecting':'yes'})
 			if shutit.send_and_match_output('oc get nodes','.*node1.vagrant.test     Ready.*'):
 				break
 		# Need to set masters as schedulable (why? - ansible seems to un-schedule them)
