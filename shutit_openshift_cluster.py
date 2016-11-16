@@ -82,7 +82,8 @@ Vagrant.configure("2") do |config|
   end
 end''')
 		password = shutit.get_env_pass()
-		shutit.multisend('vagrant up --provider ' + shutit.cfg['shutit-library.virtualization.virtualization.virtualization']['virt_method'],{'assword':password},timeout=99999)
+		for machine in machine_names:
+			shutit.multisend('vagrant up ' + machine,{'assword':password},timeout=99999)
 		master1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^master1.vagrant.test | awk '{print $2}'""")
 		master2_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^master2.vagrant.test | awk '{print $2}'""")
 		master3_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^master3.vagrant.test | awk '{print $2}'""")
