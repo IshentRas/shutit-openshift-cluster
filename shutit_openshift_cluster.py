@@ -29,27 +29,24 @@ Vagrant.configure("2") do |config|
     vb.memory = "''' + memory + '''"
   end
 
-  config.vm.define "master1" do |master1|    
+  config.vm.define "master1" do |master1|
     master1.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    master1.vm.network "private_network", ip: "192.168.2.2"
     master1.vm.hostname = "master1.vagrant.test"
     master1.vm.provider :virtualbox do |v|
       v.customize ["modifyvm", :id, "--memory", "2048"]
       v.customize ["modifyvm", :id, "--cpus", "4"]
     end
   end
-  config.vm.define "master2" do |master2|    
+  config.vm.define "master2" do |master2|
     master2.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    master2.vm.network "private_network", ip: "192.168.2.3"
     master2.vm.hostname = "master2.vagrant.test"
     master2.vm.provider :virtualbox do |v|
       v.customize ["modifyvm", :id, "--memory", "1024"]
       v.customize ["modifyvm", :id, "--cpus", "2"]
     end
   end
-  config.vm.define "master3" do |master3|    
+  config.vm.define "master3" do |master3|
     master3.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    master3.vm.network "private_network", ip: "192.168.2.4"
     master3.vm.hostname = "master3.vagrant.test"
     master3.vm.provider :virtualbox do |v|
       v.customize ["modifyvm", :id, "--memory", "1024"]
@@ -59,46 +56,49 @@ Vagrant.configure("2") do |config|
 
   config.vm.define "openshiftcluster" do |openshiftcluster|
     openshiftcluster.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    openshiftcluster.vm.network :private_network, ip: "192.168.2.13"
     openshiftcluster.vm.hostname = "openshift-cluster.vagrant.test"
   end
 
   config.vm.define "etcd1" do |etcd1|
     etcd1.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    etcd1.vm.network :private_network, ip: "192.168.2.14"
     etcd1.vm.hostname = "etcd1.vagrant.test"
   end
   config.vm.define "etcd2" do |etcd2|
     etcd2.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    etcd2.vm.network :private_network, ip: "192.168.2.15"
     etcd2.vm.hostname = "etcd2.vagrant.test"
   end
   config.vm.define "etcd3" do |etcd3|
     etcd3.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    etcd3.vm.network :private_network, ip: "192.168.2.16"
     etcd3.vm.hostname = "etcd3.vagrant.test"
   end
 
   config.vm.define "node1" do |node1|
     node1.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    node1.vm.network :private_network, ip: "192.168.2.24"
     node1.vm.hostname = "node1.vagrant.test"
   end
   config.vm.define "node2" do |node2|
     node2.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    node2.vm.network :private_network, ip: "192.168.2.25"
     node2.vm.hostname = "node2.vagrant.test"
   end
 end''')
 		password = shutit.get_env_pass()
 		shutit.multisend('vagrant up --provider ' + shutit.cfg['shutit-library.virtualization.virtualization.virtualization']['virt_method'],{'assword':password},timeout=99999)
+		master1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^master1.vagrant.test' | awk '{print $2}'""")
+		master2_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^master2.vagrant.test' | awk '{print $2}'""")
+		etcd1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd1.vagrant.test' | awk '{print $2}'""")
+		etcd2_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd2.vagrant.test' | awk '{print $2}'""")
+		etcd3_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd3.vagrant.test' | awk '{print $2}'""")
+		etcd4_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd4.vagrant.test' | awk '{print $2}'""")
+		etcd5_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd5.vagrant.test' | awk '{print $2}'""")
+		etcd6_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd6.vagrant.test' | awk '{print $2}'""")
+		node1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^node1.vagrant.test' | awk '{print $2}'""")
 		for machine in machine_names:
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
 			# See: https://access.redhat.com/articles/1320623
 			shutit.send('rm -fr /var/cache/yum/*')
-			shutit.send('yum clean all') 
-			shutit.send('yum update -y') 
+			shutit.send('yum clean all')
+			shutit.send('yum update -y')
 			shutit.install('xterm')
 			shutit.install('net-tools')
 			shutit.send('''sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config''')
@@ -191,7 +191,7 @@ node2.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'west'}"
 		shutit.send('oadm manage-node master2.vagrant.test --schedulable')
 		shutit.send('oadm manage-node master3.vagrant.test --schedulable')
 		# List the etcd members
-		shutit.send('etcdctl --endpoints https://192.168.2.14:2379,https://192.168.2.15:2379,https://192.168.2.16:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list')
+		shutit.send('etcdctl --endpoints https://' + etcd1_ip + ':2379,https://' + etcd2_ip + ':2379,https://' + etcd3_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list')
 		shutit.send('git clone --depth=1 https://github.com/openshift/origin')
 		shutit.send('cd origin/examples')
 		# TODO: https://github.com/openshift/origin/tree/master/examples/data-population
