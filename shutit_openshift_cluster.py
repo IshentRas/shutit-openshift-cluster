@@ -251,7 +251,205 @@ solo true''')
 			shutit.logout()
 			shutit.logout()
 
-		shutit.pause_point('generate certs by running chef on master?')
+		# Switch off chef crons
+		for machine in machine_names:
+			shutit.login(command='vagrant ssh ' + machine)
+			shutit.login(command='sudo su - ')
+			if machine not in ('etcd1','etcd2','etcd3'):
+				shutit.send('echo "#*/5 * * * * chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1" | crontab')
+			shutit.logout()
+			shutit.logout()
+		
+		shutit.login(command='vagrant ssh master1')
+		shutit.login(command='sudo su - ')
+		# Extend cluster to 5 in chef on master1 just to get the certs
+		shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''','''{
+  "name": "ocp-cluster-environment",
+  "description": "",
+  "cookbook_versions": {
+									  },
+  "json_class": "Chef::Environment",
+  "chef_type": "environment",
+  "default_attributes": {
+
+  },
+  "override_attributes": {
+	"cookbook-openshift3": {
+	  "openshift_HA": true,
+	  "openshift_cluster_name": "master1.vagrant.test",
+	  "openshift_master_cluster_vip": "''' + master1_ip + '''",
+	  "openshift_deployment_type": "origin",
+	  "master_servers": [
+		{
+		  "fqdn": "master1.vagrant.test",
+		  "ipaddress": "''' + master1_ip + '''"
+		},
+		{
+		  "fqdn": "master2.vagrant.test",
+		  "ipaddress": "''' + master2_ip + '''"
+		},
+		{
+		  "fqdn": "master3.vagrant.test",
+		  "ipaddress": "''' + master3_ip + '''"
+		}
+	  ],
+	  "master_peers": [
+		{
+		  "fqdn": "master2.vagrant.test",
+		  "ipaddress": "''' + master2_ip + '''"
+		},
+		{
+		  "fqdn": "master3.vagrant.test",
+		  "ipaddress": "''' + master3_ip + '''"
+		}
+	  ],
+	  "etcd_servers": [
+		{
+		  "fqdn": "master1.vagrant.test",
+		  "ipaddress": "''' + master1_ip + '''"
+		},
+		{
+		  "fqdn": "master2.vagrant.test",
+		  "ipaddress": "''' + master2_ip + '''"
+		},
+		{
+		  "fqdn": "master3.vagrant.test",
+		  "ipaddress": "''' + master3_ip + '''"
+		},
+		{
+		  "fqdn": "etcd1.vagrant.test",
+		  "ipaddress": "''' + etcd1_ip + '''"
+		},
+		{
+		  "fqdn": "etcd2.vagrant.test",
+		  "ipaddress": "''' + etcd2_ip + '''"
+		}
+	  ],
+	  "node_servers": [
+		{
+		  "fqdn": "node1.vagrant.test",
+		  "ipaddress": "''' + node1_ip + '''"
+		},
+		{
+		  "fqdn": "master1.vagrant.test",
+		  "ipaddress": "''' + master1_ip + '''"
+		},
+		{
+		  "fqdn": "master2.vagrant.test",
+		  "ipaddress": "''' + master2_ip + '''"
+		},
+		{
+		  "fqdn": "master3.vagrant.test",
+		  "ipaddress": "''' + master3_ip + '''"
+		}
+	  ]
+	}
+  }
+}''')
+		# Re-run chef to generate certs for etcd1 and etcd2
+		shutit.send('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1"')
+		shutit.logout()
+		shutit.logout()
+
+		# Add etcd1 to cluster - TODO: do this in chef?
+		shutit.login(command='vagrant ssh master1')
+		shutit.login(command='sudo su - ')
+		shutit.send('etcdctl --endpoints https://' + master1_ip + ':2379,https://' + master2_ip + ':2379,https://' + master3_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add etcd1.vagrant.test https://' + etcdip + ':2380 | grep ^ETCD | tee /tmp/out',note='Add node to cluster')
+		etcd1_config = shutit.send_and_get_output('cat /tmp/out')
+		shutit.logout()
+		shutit.logout()
+
+		# go to etcd1 and set up etcd
+		shutit.login(command='vagrant ssh etcd1')
+		shutit.login(command='sudo su - ')
+		shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''','''{
+  "name": "ocp-cluster-environment",
+  "description": "",
+  "cookbook_versions": {
+									  },
+  "json_class": "Chef::Environment",
+  "chef_type": "environment",
+  "default_attributes": {
+
+  },
+  "override_attributes": {
+	"cookbook-openshift3": {
+	  "openshift_HA": true,
+	  "openshift_cluster_name": "master1.vagrant.test",
+	  "openshift_master_cluster_vip": "''' + master1_ip + '''",
+	  "openshift_deployment_type": "origin",
+	  "master_servers": [
+		{
+		  "fqdn": "master1.vagrant.test",
+		  "ipaddress": "''' + master1_ip + '''"
+		},
+		{
+		  "fqdn": "master2.vagrant.test",
+		  "ipaddress": "''' + master2_ip + '''"
+		},
+		{
+		  "fqdn": "master3.vagrant.test",
+		  "ipaddress": "''' + master3_ip + '''"
+		}
+	  ],
+	  "master_peers": [
+		{
+		  "fqdn": "master2.vagrant.test",
+		  "ipaddress": "''' + master2_ip + '''"
+		},
+		{
+		  "fqdn": "master3.vagrant.test",
+		  "ipaddress": "''' + master3_ip + '''"
+		}
+	  ],
+	  "etcd_servers": [
+		{
+		  "fqdn": "master1.vagrant.test",
+		  "ipaddress": "''' + master1_ip + '''"
+		},
+		{
+		  "fqdn": "master2.vagrant.test",
+		  "ipaddress": "''' + master2_ip + '''"
+		},
+		{
+		  "fqdn": "master3.vagrant.test",
+		  "ipaddress": "''' + master3_ip + '''"
+		},
+		{
+		  "fqdn": "etcd1.vagrant.test",
+		  "ipaddress": "''' + etcd1_ip + '''"
+		},
+		{
+		  "fqdn": "etcd2.vagrant.test",
+		  "ipaddress": "''' + etcd2_ip + '''"
+		}
+	  ],
+	  "node_servers": [
+		{
+		  "fqdn": "node1.vagrant.test",
+		  "ipaddress": "''' + node1_ip + '''"
+		},
+		{
+		  "fqdn": "master1.vagrant.test",
+		  "ipaddress": "''' + master1_ip + '''"
+		},
+		{
+		  "fqdn": "master2.vagrant.test",
+		  "ipaddress": "''' + master2_ip + '''"
+		},
+		{
+		  "fqdn": "master3.vagrant.test",
+		  "ipaddress": "''' + master3_ip + '''"
+		}
+	  ]
+	}
+  }
+}''')
+		# Can we do this with chef?
+		shutit.send('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1"')
+		shutit.pause_point('did etcd install ok?')
+		shutit.logout()
+		shutit.logout()
 		return True
 
 	def get_config(self, shutit):
