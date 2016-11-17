@@ -23,62 +23,62 @@ class shutit_openshift_cluster(ShutItModule):
 Vagrant.configure("2") do |config|
   config.landrush.enabled = true
   config.vm.provider "virtualbox" do |vb|
-    vb.memory = "''' + memory + '''"
+	vb.memory = "''' + memory + '''"
   end
   config.vm.provider "libvirt" do |vb|
-    vb.memory = "''' + memory + '''"
+	vb.memory = "''' + memory + '''"
   end
 
-  config.vm.define "master1" do |master1|    
-    master1.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    master1.vm.hostname = "master1.vagrant.test"
-    master1.vm.provider :virtualbox do |v|
-      v.customize ["modifyvm", :id, "--memory", "2048"]
-      v.customize ["modifyvm", :id, "--cpus", "2"]
-    end
+  config.vm.define "master1" do |master1|
+	master1.vm.box = ''' + '"' + vagrant_image + '"' + '''
+	master1.vm.hostname = "master1.vagrant.test"
+	master1.vm.provider :virtualbox do |v|
+	  v.customize ["modifyvm", :id, "--memory", "2048"]
+	  v.customize ["modifyvm", :id, "--cpus", "2"]
+	end
   end
-  config.vm.define "master2" do |master2|    
-    master2.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    master2.vm.hostname = "master2.vagrant.test"
+  config.vm.define "master2" do |master2|
+	master2.vm.box = ''' + '"' + vagrant_image + '"' + '''
+	master2.vm.hostname = "master2.vagrant.test"
   end
-  config.vm.define "master3" do |master3|    
-    master3.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    master3.vm.hostname = "master3.vagrant.test"
+  config.vm.define "master3" do |master3|
+	master3.vm.box = ''' + '"' + vagrant_image + '"' + '''
+	master3.vm.hostname = "master3.vagrant.test"
   end
 
   config.vm.define "openshiftcluster" do |openshiftcluster|
-    openshiftcluster.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    openshiftcluster.vm.hostname = "openshiftcluster.vagrant.test"
+	openshiftcluster.vm.box = ''' + '"' + vagrant_image + '"' + '''
+	openshiftcluster.vm.hostname = "openshiftcluster.vagrant.test"
   end
 
   config.vm.define "etcd1" do |etcd1|
-    etcd1.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    etcd1.vm.hostname = "etcd1.vagrant.test"
+	etcd1.vm.box = ''' + '"' + vagrant_image + '"' + '''
+	etcd1.vm.hostname = "etcd1.vagrant.test"
   end
   config.vm.define "etcd2" do |etcd2|
-    etcd2.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    etcd2.vm.hostname = "etcd2.vagrant.test"
+	etcd2.vm.box = ''' + '"' + vagrant_image + '"' + '''
+	etcd2.vm.hostname = "etcd2.vagrant.test"
   end
   config.vm.define "etcd3" do |etcd3|
-    etcd3.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    etcd3.vm.hostname = "etcd3.vagrant.test"
+	etcd3.vm.box = ''' + '"' + vagrant_image + '"' + '''
+	etcd3.vm.hostname = "etcd3.vagrant.test"
   end
   config.vm.define "etcd4" do |etcd4|
-    etcd4.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    etcd4.vm.hostname = "etcd4.vagrant.test"
+	etcd4.vm.box = ''' + '"' + vagrant_image + '"' + '''
+	etcd4.vm.hostname = "etcd4.vagrant.test"
   end
   config.vm.define "etcd5" do |etcd5|
-    etcd5.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    etcd5.vm.hostname = "etcd5.vagrant.test"
+	etcd5.vm.box = ''' + '"' + vagrant_image + '"' + '''
+	etcd5.vm.hostname = "etcd5.vagrant.test"
   end
   config.vm.define "etcd6" do |etcd6|
-    etcd6.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    etcd6.vm.hostname = "etcd6.vagrant.test"
+	etcd6.vm.box = ''' + '"' + vagrant_image + '"' + '''
+	etcd6.vm.hostname = "etcd6.vagrant.test"
   end
 
   config.vm.define "node1" do |node1|
-    node1.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    node1.vm.hostname = "node1.vagrant.test"
+	node1.vm.box = ''' + '"' + vagrant_image + '"' + '''
+	node1.vm.hostname = "node1.vagrant.test"
   end
 end''')
 		machine_names = ('master1','master2','etcd1','etcd2','etcd3','node1','openshiftcluster','etcd4','etcd5','etcd6')
@@ -103,7 +103,7 @@ end''')
 			shutit.send('''sed -i 's/enabled=1/enabled=0/' /etc/yum/pluginconf.d/fastestmirror.conf''')
 			# See: https://access.redhat.com/articles/1320623
 			shutit.send('rm -fr /var/cache/yum/*')
-			shutit.send('yum clean all') 
+			shutit.send('yum clean all')
 			shutit.install('xterm')
 			shutit.install('net-tools')
 			shutit.install('git')
@@ -133,9 +133,9 @@ end''')
 			shutit.send('curl -L https://supermarket.chef.io/cookbooks/selinux_policy/download | tar -zxvf -')
 			shutit.send('curl -L https://supermarket.chef.io/cookbooks/compat_resource/download | tar -zxvf -')
 			shutit.send_file('/root/chef-solo-example/solo.rb','''cookbook_path [
-               '/root/chef-solo-example/cookbooks',
-               '/root/chef-solo-example/site-cookbooks'
-              ]
+			   '/root/chef-solo-example/cookbooks',
+			   '/root/chef-solo-example/site-cookbooks'
+			  ]
 environment_path '/root/chef-solo-example/environments'
 file_backup_path '/root/chef-solo-example/backup'
 file_cache_path '/root/chef-solo-example/cache'
@@ -146,75 +146,75 @@ solo true''')
   "name": "ocp-cluster-environment",
   "description": "",
   "cookbook_versions": {
-                                      },
+									  },
   "json_class": "Chef::Environment",
   "chef_type": "environment",
   "default_attributes": {
 
   },
   "override_attributes": {
-    "cookbook-openshift3": {
-      "openshift_HA": true,
-      "openshift_cluster_name": "master1.vagrant.test",
-      "openshift_master_cluster_vip": "''' + master1_ip + '''",
-      "openshift_deployment_type": "origin",
-      "master_servers": [
-        {
-          "fqdn": "master1.vagrant.test",
-          "ipaddress": "''' + master1_ip + '''"
-        },
-        {
-          "fqdn": "master2.vagrant.test",
-          "ipaddress": "''' + master2_ip + '''"
-        },
-        {
-          "fqdn": "master3.vagrant.test",
-          "ipaddress": "''' + master3_ip + '''"
-        }
-      ],
-      "master_peers": [
-        {
-          "fqdn": "master2.vagrant.test",
-          "ipaddress": "''' + master2_ip + '''"
-        },
-        {
-          "fqdn": "master3.vagrant.test",
-          "ipaddress": "''' + master3_ip + '''"
-        }
-      ],
-      "etcd_servers": [
-        {
-          "fqdn": "etcd1.vagrant.test",
-          "ipaddress": "''' + etcd1_ip + '''"
-        },
-        {
-          "fqdn": "etcd2.vagrant.test",
-          "ipaddress": "''' + etcd2_ip + '''"
-        },
-       {
-          "fqdn": "etcd3.vagrant.test",
-          "ipaddress": "''' + etcd3_ip + '''"
-        }
-      ],
-      "node_servers": [
-        {
-          "fqdn": "node1.vagrant.test",
-          "ipaddress": "''' + node1_ip + '''"
-        },
-        {
-          "fqdn": "master1.vagrant.test",
-          "ipaddress": "''' + master1_ip + '''"
-        },
-        {
-          "fqdn": "master2.vagrant.test",
-          "ipaddress": "''' + master2_ip + '''"
-        },
-        {
-          "fqdn": "master3.vagrant.test",
-          "ipaddress": "''' + master3_ip + '''"
-        }
-      ]
-    }
+	"cookbook-openshift3": {
+	  "openshift_HA": true,
+	  "openshift_cluster_name": "master1.vagrant.test",
+	  "openshift_master_cluster_vip": "''' + master1_ip + '''",
+	  "openshift_deployment_type": "origin",
+	  "master_servers": [
+		{
+		  "fqdn": "master1.vagrant.test",
+		  "ipaddress": "''' + master1_ip + '''"
+		},
+		{
+		  "fqdn": "master2.vagrant.test",
+		  "ipaddress": "''' + master2_ip + '''"
+		},
+		{
+		  "fqdn": "master3.vagrant.test",
+		  "ipaddress": "''' + master3_ip + '''"
+		}
+	  ],
+	  "master_peers": [
+		{
+		  "fqdn": "master2.vagrant.test",
+		  "ipaddress": "''' + master2_ip + '''"
+		},
+		{
+		  "fqdn": "master3.vagrant.test",
+		  "ipaddress": "''' + master3_ip + '''"
+		}
+	  ],
+	  "etcd_servers": [
+		{
+		  "fqdn": "etcd1.vagrant.test",
+		  "ipaddress": "''' + etcd1_ip + '''"
+		},
+		{
+		  "fqdn": "etcd2.vagrant.test",
+		  "ipaddress": "''' + etcd2_ip + '''"
+		},
+	   {
+		  "fqdn": "etcd3.vagrant.test",
+		  "ipaddress": "''' + etcd3_ip + '''"
+		}
+	  ],
+	  "node_servers": [
+		{
+		  "fqdn": "node1.vagrant.test",
+		  "ipaddress": "''' + node1_ip + '''"
+		},
+		{
+		  "fqdn": "master1.vagrant.test",
+		  "ipaddress": "''' + master1_ip + '''"
+		},
+		{
+		  "fqdn": "master2.vagrant.test",
+		  "ipaddress": "''' + master2_ip + '''"
+		},
+		{
+		  "fqdn": "master3.vagrant.test",
+		  "ipaddress": "''' + master3_ip + '''"
+		}
+	  ]
+	}
   }
 }''')
 			shutit.logout()
@@ -247,91 +247,37 @@ solo true''')
 		shutit.logout()
 		shutit.logout()
 
-		##shutit.pause_point('Migrate etcd....')
-		## Get backup
-		## https://docs.openshift.com/enterprise/3.2/install_config/upgrading/manual_upgrades.html#preparing-for-a-manual-upgrade
-		#for machine in ('etcd1','etcd2','etcd3'):
-		#	shutit.login(command='vagrant ssh ' + machine)
-		#	shutit.login(command='sudo su - ')
-		#	shutit.send('ETCD_DATA_DIR=/var/lib/etcd')
-		#	shutit.send('etcdctl backup --data-dir $ETCD_DATA_DIR --backup-dir $ETCD_DATA_DIR.backup')
-		#	shutit.send('cp /etc/etcd/etcd.conf /etc/etcd/etcd.conf.bak')
-		#	shutit.logout()
-		#	shutit.logout()
-		## https://docs.openshift.com/enterprise/3.2/install_config/downgrade.html
-		#for machine in ('master1','master2'):
-		#	shutit.login(command='vagrant ssh ' + machine)
-		#	shutit.login(command='sudo su - ')
-		#	#shutit.send('systemctl stop atomic-openshift-master-api')
-		#	#shutit.send('systemctl stop atomic-openshift-master-controllers')
-		#	#shutit.send('systemctl stop atomic-openshift-node')
-		#	shutit.send('systemctl stop origin-master-api')
-		#	shutit.send('systemctl stop origin-master-controllers')
-		#	shutit.send('systemctl stop origin-node')
-		#	shutit.logout()
-		#	shutit.logout()
-		#for machine in ('node1'):
-		#	shutit.login(command='vagrant ssh ' + machine)
-		#	shutit.login(command='sudo su - ')
-		#	#shutit.send('systemctl stop atomic-openshift-node')
-		#	shutit.send('systemctl stop origin-node')
-		#	shutit.logout()
-		#	shutit.logout()
-		## Stop etcd
-		#for machine in ('etcd1','etcd2','etcd3'):
-		#	shutit.login(command='vagrant ssh ' + machine)
-		#	shutit.login(command='sudo su - ')
-		#	shutit.send('systemctl stop etcd')
-		#	shutit.logout()
-		#	shutit.logout()
-		## Uninstall etcd
-		#for machine in ('etcd1','etcd2','etcd3'):
-		#	shutit.login(command='vagrant ssh ' + machine)
-		#	shutit.login(command='sudo su - ')
-		#	shutit.remove('etcd')
-		#	shutit.logout()
-		#	shutit.logout()
-		## Reinstall etcd
-		#for machine in ('etcd1','etcd2','etcd3'):
-		#	shutit.login(command='vagrant ssh ' + machine)
-		#	shutit.login(command='sudo su - ')
-		#	shutit.install('etcd')
-		#	shutit.logout()
-		#	shutit.logout()
-		#shutit.pause_point('https://docs.openshift.com/enterprise/3.2/install_config/downgrade.html#downgrading-restoring-external-etcd')
-		#shutit.login(command='vagrant ssh etcd1')
-		#shutit.login(command='sudo su - ')
-		## Run the following on the etcd host:
-		#shutit.send('ETCD_DIR=/var/lib/etcd')
-		#shutit.send('mv $ETCD_DIR /var/lib/etcd.orig')
-		#shutit.send('cp -Rp ${ETCD_DIR}.backup $ETCD_DIR')
-		#shutit.send('chcon -R --reference /var/lib/etcd.orig/ $ETCD_DIR')
-		#shutit.send('chown -R etcd:etcd $ETCD_DIR')
-		## Restore your /etc/etcd/etcd.conf file from backup or .rpmsave.
-		#shutit.send('cp /etc/etcd/etcd.conf.bak /etc/etcd/etcd.conf')
-		#shutit.send("""sed -i '/ExecStart/s/"$/  --force-new-cluster"/' /usr/lib/systemd/system/etcd.service""")
-		#shutit.send('systemctl daemon-reload')
-		#shutit.send('systemctl start etcd')
-		#shutit.send('systemctl status etcd')
+		# Get backup
+		# https://docs.openshift.com/enterprise/3.2/install_config/upgrading/manual_upgrades.html#preparing-for-a-manual-upgrade
+		for machine in ('etcd1','etcd2','etcd3'):
+			shutit.login(command='vagrant ssh ' + machine)
+			shutit.login(command='sudo su - ')
+			shutit.send('ETCD_DATA_DIR=/var/lib/etcd')
+			shutit.send('etcdctl backup --data-dir $ETCD_DATA_DIR --backup-dir $ETCD_DATA_DIR.backup')
+			shutit.send('cp /etc/etcd/etcd.conf /etc/etcd/etcd.conf.bak')
+			shutit.logout()
+			shutit.logout()
+		# https://docs.openshift.com/enterprise/3.2/install_config/downgrade.html
+		for machine in ('master1','master2'):
+			shutit.login(command='vagrant ssh ' + machine)
+			shutit.login(command='sudo su - ')
+			#shutit.send('systemctl stop atomic-openshift-master-api')
+			#shutit.send('systemctl stop atomic-openshift-master-controllers')
+			#shutit.send('systemctl stop atomic-openshift-node')
+			shutit.send('systemctl stop origin-master-api')
+			shutit.send('systemctl stop origin-master-controllers')
+			shutit.send('systemctl stop origin-node')
+			shutit.logout()
+			shutit.logout()
+		for machine in ('master1','master2','node1'):
+			shutit.login(command='vagrant ssh ' + machine)
+			shutit.login(command='sudo su - ')
+			#shutit.send('systemctl stop atomic-openshift-node')
+			shutit.send('systemctl stop origin-node')
+			shutit.logout()
+			shutit.logout()
 
-		## Verify the etcd service started correctly, then re-edit the /usr/lib/systemd/system/etcd.service file and remove the --force-new-cluster option:
-		#shutit.send("""sed -i '/ExecStart/s/ --force-new-cluster//' /usr/lib/systemd/system/etcd.service""")
-		#shutit.send('systemctl daemon-reload')
-		#shutit.send('systemctl start etcd')
-		#shutit.send('systemctl status etcd')
-		#shutit.send('etcdctl --cert-file=/etc/etcd/peer.crt --key-file=/etc/etcd/peer.key --ca-file=/etc/etcd/ca.crt --peers="https://192.168.2.14:2379" ls')
-		#shutit.send('etcdctl --cert-file=/etc/etcd/peer.crt --key-file=/etc/etcd/peer.key --ca-file=/etc/etcd/ca.crt --peers="https://192.168.2.14:2379" member list')
-
-		## Adding a new node
-		#etcd_first_member_id = shutit.send_and_get_output("""etcdctl --cert-file=/etc/etcd/peer.crt --key-file=/etc/etcd/peer.key --ca-file=/etc/etcd/ca.crt --peers="https://192.168.2.14:2379" member list | awk -F: '{print $1}'""")
-		## Replace the initial with a single node
-		#shutit.send("""sed -i 's/^ETCD.*/ETCD_INITIAL_ADVERTISE_PEER_URLS=https:\/\/192.168.2.14:2380/'""")
-		#shutit.send('''etcdctl --cert-file=/etc/etcd/peer.crt --key-file=/etc/etcd/peer.key --ca-file=/etc/etcd/ca.crt --peers="https://192.168.2.14:2379" member update ''' + etcd_first_member_id + ''' https://192.168.2.14:2380''')
-		#shutit.pause_point('Re-run the member list command and ensure the peer URLs no longer include localhost.')
-
-		## TODO: add nodes
-		#shutit.logout()
-		#shutit.logout()
+		shutit.pause_point('generate certs by running chef on master?')
 		return True
 
 	def get_config(self, shutit):
