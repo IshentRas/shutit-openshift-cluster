@@ -359,6 +359,7 @@ solo true''')
 		shutit.logout()
 		shutit.logout()
 
+		###############################################################################
 		# go to etcd1 and set up etcd
 		shutit.login(command='vagrant ssh etcd1')
 		shutit.login(command='sudo su - ')
@@ -447,10 +448,42 @@ solo true''')
 }''')
 		# Can we do this with chef?
 		shutit.send('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1"')
-		shutit.pause_point('did etcd install ok?')
+		shutit.pause_point('did etcd install ok? do we need to update the config? do we need to add the node to the cluster manually? query etcd, if the item is not in the member list then add it')
+		# TODO: how do we run etcdctl as a one-off using chef?
+		
 		shutit.logout()
 		shutit.logout()
+		################################################################################
+
+		################################################################################
+		# Do same with etcd2
+		################################################################################
+
+		################################################################################
+		# When those 5 are started and happy, need to drop etcd1 from the cluster.
+		################################################################################
+
+		################################################################################
+		# Then update the environment file to reflect the new cluster of 5 and re-run chef.
+		################################################################################
+
+		################################################################################
+		# This generates the config for etcd3
+		################################################################################
+
+		################################################################################
+		# Set up etcd3 and add to the cluster as per 1 and 2 above.
+		################################################################################
+
+		################################################################################
+		# Drop etcd 2 and etcd3 from the cluster.
+		################################################################################
+
+		################################################################################
+		# Update the chef config to reflect the new reality, and then run chef everywhere
+		################################################################################
 		return True
+
 
 	def get_config(self, shutit):
 		#shutit.get_config(self.module_id,'vagrant_image',default='ubuntu/trusty64')
@@ -461,25 +494,6 @@ solo true''')
 		shutit.get_config(self.module_id,'memory',default='512')
 		return True
 
-	def test(self, shutit):
-
-		return True
-
-	def finalize(self, shutit):
-
-		return True
-
-	def isinstalled(self, shutit):
-
-		return False
-
-	def start(self, shutit):
-
-		return True
-
-	def stop(self, shutit):
-
-		return True
 
 def module():
 	return shutit_openshift_cluster(
