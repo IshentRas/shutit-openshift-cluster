@@ -448,9 +448,13 @@ solo true''')
 }''')
 		# Can we do this with chef?
 		shutit.send('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1"')
-		shutit.pause_point('did etcd install ok? do we need to update the config? do we need to add the node to the cluster manually? query etcd, if the item is not in the member list then add it')
-		# TODO: how do we run etcdctl as a one-off using chef?
-		
+		shutit.pause_point('did etcd install ok? do we need to update the config? do we need to add the node to the cluster manually? query etcd, if the item is not in the member list then add it - can you etcdctl on one endpoint? it would be simpler. config to add: ')
+		#ETCD_NAME="node4" # We know this in advance
+		#ETCD_INITIAL_CLUSTER="http://10.0.1.1:2380,,node4=http://10.0.1.4:2380" # We know this in advance, but is it different for each addition?
+		#ETCD_INITIAL_CLUSTER_STATE=existing # We know this in advance
+
+		# Do we need chef dispensation to update the etcd conf file.
+
 		shutit.logout()
 		shutit.logout()
 		################################################################################
@@ -458,6 +462,17 @@ solo true''')
 		################################################################################
 		# Do same with etcd2
 		################################################################################
+
+		################################################################################
+		# TODO: how do we run etcdctl to add nodes as a one-off using chef?
+		# FROM MASTER1
+		#if config to add is on and this == 0:
+		#	etcdctl --endpoints https://master1_ip:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list | grep etcd1.vagrant.test | wc -l
+		#then:
+		#	etcdctl --endpoints https://master1_ip:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add etcd1.vagrant.test
+		################################################################################
+		
+
 
 		################################################################################
 		# When those 5 are started and happy, need to drop etcd1 from the cluster.
