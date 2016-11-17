@@ -46,11 +46,6 @@ Vagrant.configure("2") do |config|
 	master3.vm.hostname = "master3.vagrant.test"
   end
 
-  config.vm.define "openshiftcluster" do |openshiftcluster|
-	openshiftcluster.vm.box = ''' + '"' + vagrant_image + '"' + '''
-	openshiftcluster.vm.hostname = "openshiftcluster.vagrant.test"
-  end
-
   config.vm.define "etcd1" do |etcd1|
 	etcd1.vm.box = ''' + '"' + vagrant_image + '"' + '''
 	etcd1.vm.hostname = "etcd1.vagrant.test"
@@ -63,26 +58,14 @@ Vagrant.configure("2") do |config|
 	etcd3.vm.box = ''' + '"' + vagrant_image + '"' + '''
 	etcd3.vm.hostname = "etcd3.vagrant.test"
   end
-  config.vm.define "etcd4" do |etcd4|
-	etcd4.vm.box = ''' + '"' + vagrant_image + '"' + '''
-	etcd4.vm.hostname = "etcd4.vagrant.test"
-  end
-  config.vm.define "etcd5" do |etcd5|
-	etcd5.vm.box = ''' + '"' + vagrant_image + '"' + '''
-	etcd5.vm.hostname = "etcd5.vagrant.test"
-  end
-  config.vm.define "etcd6" do |etcd6|
-	etcd6.vm.box = ''' + '"' + vagrant_image + '"' + '''
-	etcd6.vm.hostname = "etcd6.vagrant.test"
-  end
 
   config.vm.define "node1" do |node1|
 	node1.vm.box = ''' + '"' + vagrant_image + '"' + '''
 	node1.vm.hostname = "node1.vagrant.test"
   end
 end''')
-		machine_names = ('master1','master2','etcd1','etcd2','etcd3','node1','openshiftcluster','etcd4','etcd5','etcd6')
-		machines = ('master1.vagrant.test','master2.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test','openshiftcluster.vagrant.test','etcd4.vagrant.test','etcd5.vagrant.test','etcd6.vagrant.test')
+		machine_names = ('master1','master2','master3','etcd1','etcd2','etcd3','node1')
+		machines = ('master1.vagrant.test','master2.vagrant.test','master3.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test')
 		password = shutit.get_env_pass()
 		shutit.multisend('vagrant up --provider ' + shutit.cfg['shutit-library.virtualization.virtualization.virtualization']['virt_method'],{'assword':password},timeout=99999)
 		master1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^master1.vagrant.test | awk '{print $2}'""")
@@ -91,11 +74,7 @@ end''')
 		etcd1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd1.vagrant.test | awk '{print $2}'""")
 		etcd2_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd2.vagrant.test | awk '{print $2}'""")
 		etcd3_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd3.vagrant.test | awk '{print $2}'""")
-		etcd4_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd4.vagrant.test | awk '{print $2}'""")
-		etcd5_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd5.vagrant.test | awk '{print $2}'""")
-		etcd6_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd6.vagrant.test | awk '{print $2}'""")
 		node1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^node1.vagrant.test | awk '{print $2}'""")
-		openshiftcluster_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^openshiftcluster.vagrant.test | awk '{print $2}'""")
 		for machine in machine_names:
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
@@ -184,16 +163,16 @@ solo true''')
 	  ],
 	  "etcd_servers": [
 		{
-		  "fqdn": "etcd1.vagrant.test",
-		  "ipaddress": "''' + etcd1_ip + '''"
+		  "fqdn": "master1.vagrant.test",
+		  "ipaddress": "''' + master1_ip + '''"
 		},
 		{
-		  "fqdn": "etcd2.vagrant.test",
-		  "ipaddress": "''' + etcd2_ip + '''"
+		  "fqdn": "master2.vagrant.test",
+		  "ipaddress": "''' + master2_ip + '''"
 		},
 	   {
-		  "fqdn": "etcd3.vagrant.test",
-		  "ipaddress": "''' + etcd3_ip + '''"
+		  "fqdn": "master3.vagrant.test",
+		  "ipaddress": "''' + master3_ip + '''"
 		}
 	  ],
 	  "node_servers": [
@@ -222,16 +201,14 @@ solo true''')
 		for machine in machine_names:
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
-			if machine not in ('etcd4','etcd5','etcd6'):
+			if machine not in ('etcd1','etcd2','etcd3'):
 				shutit.send('echo "*/5 * * * * chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1" | crontab')
 			shutit.logout()
 			shutit.logout()
 		
-		# Wait 15 minutes for everything to be ready
-		shutit.send('date && sleep $[60 * 15]',timeout=9999)
 		shutit.login(command='vagrant ssh master1')
 		shutit.login(command='sudo su - ')
-		shutit.send('oc get all')
+		shutit.send_until('oc get all','.*kubernetes.*',cadence=60)
 		shutit.logout()
 		shutit.logout()
 
@@ -242,14 +219,11 @@ solo true''')
 		## TODO: https://github.com/openshift/origin/tree/master/examples/data-population
 		#shutit.send('cd data-population')
 		#shutit.send('ln -s /etc/origin openshift.local.config')
-		#shutit.send("""sed -i 's/10.0.2.15/openshiftcluster/g' common.sh""")
 		#shutit.send('./populate.sh')
-		shutit.logout()
-		shutit.logout()
 
 		# Get backup
 		# https://docs.openshift.com/enterprise/3.2/install_config/upgrading/manual_upgrades.html#preparing-for-a-manual-upgrade
-		for machine in ('etcd1','etcd2','etcd3'):
+		for machine in ('master1','master2','master3'):
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
 			shutit.send('ETCD_DATA_DIR=/var/lib/etcd')
