@@ -231,26 +231,6 @@ solo true''')
 			shutit.send('cp /etc/etcd/etcd.conf /etc/etcd/etcd.conf.bak')
 			shutit.logout()
 			shutit.logout()
-		# https://docs.openshift.com/enterprise/3.2/install_config/downgrade.html
-		for machine in ('master1','master2'):
-			shutit.login(command='vagrant ssh ' + machine)
-			shutit.login(command='sudo su - ')
-			#shutit.send('systemctl stop atomic-openshift-master-api')
-			#shutit.send('systemctl stop atomic-openshift-master-controllers')
-			#shutit.send('systemctl stop atomic-openshift-node')
-			shutit.send('systemctl stop origin-master-api')
-			shutit.send('systemctl stop origin-master-controllers')
-			shutit.send('systemctl stop origin-node')
-			shutit.logout()
-			shutit.logout()
-		for machine in ('master1','master2','node1'):
-			shutit.login(command='vagrant ssh ' + machine)
-			shutit.login(command='sudo su - ')
-			#shutit.send('systemctl stop atomic-openshift-node')
-			shutit.send('systemctl stop origin-node')
-			shutit.logout()
-			shutit.logout()
-
 		# Switch off chef crons
 		for machine in machine_names:
 			shutit.login(command='vagrant ssh ' + machine)
@@ -259,6 +239,26 @@ solo true''')
 				shutit.send('echo "#*/5 * * * * chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1" | crontab')
 			shutit.logout()
 			shutit.logout()
+		# https://docs.openshift.com/enterprise/3.2/install_config/downgrade.html
+		for machine in ('master1','master2','master3'):
+			shutit.login(command='vagrant ssh ' + machine)
+			shutit.login(command='sudo su - ')
+			#shutit.send('systemctl stop atomic-openshift-master-api')
+			#shutit.send('systemctl stop atomic-openshift-master-controllers')
+			#shutit.send('systemctl stop atomic-openshift-node')
+			shutit.send_until('systemctl stop origin-master-api','')
+			shutit.send_until('systemctl stop origin-master-controllers','')
+			shutit.send_until('systemctl stop origin-node','')
+			shutit.logout()
+			shutit.logout()
+		for machine in ('node1',):
+			shutit.login(command='vagrant ssh ' + machine)
+			shutit.login(command='sudo su - ')
+			#shutit.send('systemctl stop atomic-openshift-node')
+			shutit.send_until('systemctl stop origin-node','')
+			shutit.logout()
+			shutit.logout()
+
 		
 		shutit.login(command='vagrant ssh master1')
 		shutit.login(command='sudo su - ')
@@ -347,15 +347,16 @@ solo true''')
   }
 }''')
 		# Re-run chef to generate certs for etcd1 and etcd2
-		shutit.send('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1"')
+		shutit.send('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1')
 		shutit.logout()
 		shutit.logout()
 
 		# Add etcd1 to cluster - TODO: do this in chef?
 		shutit.login(command='vagrant ssh master1')
 		shutit.login(command='sudo su - ')
-		shutit.send('etcdctl --endpoints https://' + master1_ip + ':2379,https://' + master2_ip + ':2379,https://' + master3_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add etcd1.vagrant.test https://' + etcdip + ':2380 | grep ^ETCD | tee /tmp/out',note='Add node to cluster')
+		shutit.send('etcdctl --endpoints https://' + master1_ip + ':2379,https://' + master2_ip + ':2379,https://' + master3_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add etcd1.vagrant.test https://' + etcd1_ip + ':2380 | grep ^ETCD | tee /tmp/out',note='Add node to cluster')
 		etcd1_config = shutit.send_and_get_output('cat /tmp/out')
+		print(etcd1_config)
 		shutit.logout()
 		shutit.logout()
 
@@ -447,7 +448,7 @@ solo true''')
   }
 }''')
 		# Can we do this with chef?
-		shutit.send('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1"')
+		shutit.send('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1')
 		shutit.pause_point('did etcd install ok? do we need to update the config? do we need to add the node to the cluster manually? query etcd, if the item is not in the member list then add it - can you etcdctl on one endpoint? it would be simpler. config to add: ')
 		#ETCD_NAME="node4" # We know this in advance
 		#ETCD_INITIAL_CLUSTER="http://10.0.1.1:2380,,node4=http://10.0.1.4:2380" # We know this in advance, but is it different for each addition?
