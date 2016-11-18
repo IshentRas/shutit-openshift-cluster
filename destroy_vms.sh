@@ -1,4 +1,3 @@
-
 #!/bin/bash
 if [[ $(command -v VBoxManage) != '' ]]
 then
