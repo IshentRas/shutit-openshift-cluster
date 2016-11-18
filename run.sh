@@ -1,4 +1,5 @@
 #!/bin/bash
+set -x
 bash ./destroy_vms.sh
 [[ -z "$SHUTIT" ]] && SHUTIT="$1/shutit"
 [[ ! -a "$SHUTIT" ]] || [[ -z "$SHUTIT" ]] && SHUTIT="$(which shutit)"
