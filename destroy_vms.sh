@@ -15,6 +15,6 @@ then
 	done
 fi
 if [[ $(kvm-ok 2>&1 | command grep 'can be used') != '' ]]
-then
-
-fi
+then                                                                                                                                                                              
+    virsh list | grep shutit_openshift_cluster | awk '{print $1}' | xargs -n1 virsh destroy                                                                                   
+fi                                                                                              
