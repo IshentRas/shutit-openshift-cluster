@@ -14,3 +14,7 @@ then
 		fi
 	done
 fi
+if [[ $(kvm-ok 2>&1 | command grep 'can be used') != '' ]]
+then
+
+fi
