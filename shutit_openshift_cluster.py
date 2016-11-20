@@ -40,28 +40,52 @@ Vagrant.configure("2") do |config|
   config.vm.define "master2" do |master2|
 	master2.vm.box = ''' + '"' + vagrant_image + '"' + '''
 	master2.vm.hostname = "master2.vagrant.test"
+	master2.vm.provider :virtualbox do |v|
+	  v.customize ["modifyvm", :id, "--memory", "2048"]
+	  v.customize ["modifyvm", :id, "--cpus", "2"]
+	end
   end
   config.vm.define "master3" do |master3|
 	master3.vm.box = ''' + '"' + vagrant_image + '"' + '''
 	master3.vm.hostname = "master3.vagrant.test"
+	master3.vm.provider :virtualbox do |v|
+	  v.customize ["modifyvm", :id, "--memory", "2048"]
+	  v.customize ["modifyvm", :id, "--cpus", "2"]
+	end
   end
 
   config.vm.define "etcd1" do |etcd1|
 	etcd1.vm.box = ''' + '"' + vagrant_image + '"' + '''
 	etcd1.vm.hostname = "etcd1.vagrant.test"
+	etcd1.vm.provider :virtualbox do |v|
+	  v.customize ["modifyvm", :id, "--memory", "512"]
+	  v.customize ["modifyvm", :id, "--cpus", "2"]
+	end
   end
   config.vm.define "etcd2" do |etcd2|
 	etcd2.vm.box = ''' + '"' + vagrant_image + '"' + '''
 	etcd2.vm.hostname = "etcd2.vagrant.test"
+	etcd2.vm.provider :virtualbox do |v|
+	  v.customize ["modifyvm", :id, "--memory", "512"]
+	  v.customize ["modifyvm", :id, "--cpus", "2"]
+	end
   end
   config.vm.define "etcd3" do |etcd3|
 	etcd3.vm.box = ''' + '"' + vagrant_image + '"' + '''
 	etcd3.vm.hostname = "etcd3.vagrant.test"
+	etcd3.vm.provider :virtualbox do |v|
+	  v.customize ["modifyvm", :id, "--memory", "512"]
+	  v.customize ["modifyvm", :id, "--cpus", "2"]
+	end
   end
 
   config.vm.define "node1" do |node1|
 	node1.vm.box = ''' + '"' + vagrant_image + '"' + '''
 	node1.vm.hostname = "node1.vagrant.test"
+	node1.vm.provider :virtualbox do |v|
+	  v.customize ["modifyvm", :id, "--memory", "512"]
+	  v.customize ["modifyvm", :id, "--cpus", "2"]
+	end
   end
 end''')
 		machine_names = ('master1','master2','master3','etcd1','etcd2','etcd3','node1')
@@ -69,6 +93,9 @@ end''')
 		pw = shutit.get_env_pass()
 		for machine in machine_names:
 			shutit.multisend('vagrant up --provider ' + shutit.cfg['shutit-library.virtualization.virtualization.virtualization']['virt_method'] + ' ' + machine,{'assword for':pw},timeout=99999)
+		###############################################################################
+		# SET UP MACHINES AND START CLUSTER
+		###############################################################################
 		master1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^master1.vagrant.test | awk '{print $2}'""")
 		master2_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^master2.vagrant.test | awk '{print $2}'""")
 		master3_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^master3.vagrant.test | awk '{print $2}'""")
@@ -218,8 +245,11 @@ solo true''')
 		#shutit.send('cd data-population')
 		#shutit.send('ln -s /etc/origin openshift.local.config')
 		#shutit.send('./populate.sh')
+		###############################################################################
 
-		# Get backup
+		###############################################################################
+		# GET BACKUP, STOP SERVICE
+		###############################################################################
 		# https://docs.openshift.com/enterprise/3.2/install_config/upgrading/manual_upgrades.html#preparing-for-a-manual-upgrade
 		for machine in ('master1','master2','master3'):
 			shutit.login(command='vagrant ssh ' + machine)
@@ -255,8 +285,11 @@ solo true''')
 			shutit.send_until('systemctl stop origin-node','')
 			shutit.logout()
 			shutit.logout()
-
+		###############################################################################
 		
+		###############################################################################
+		# GET CERTS
+		###############################################################################
 		shutit.login(command='vagrant ssh master1')
 		shutit.login(command='sudo su - ')
 		# Extend cluster to 5 in chef on master1 just to get the certs
@@ -318,7 +351,7 @@ solo true''')
 		  "ipaddress": "''' + etcd2_ip + '''"
 		},
 		{
-		  "fqdn": "etcd1.vagrant.test",
+		  "fqdn": "etcd3.vagrant.test",
 		  "ipaddress": "''' + etcd3_ip + '''"
 		}
 	  ],
@@ -438,6 +471,7 @@ solo true''')
 			shutit.send_until('systemctl stop origin-node','')
 			shutit.logout()
 			shutit.logout()
+		###############################################################################
 
 		###############################################################################
 		# ETCD1
@@ -445,11 +479,8 @@ solo true''')
 		# Add etcd1 to cluster and drop master1 - TODO: do this in chef?
 		shutit.login(command='vagrant ssh master1')
 		shutit.login(command='sudo su - ')
-		shutit.send('etcdctl --endpoints https://' + master1_ip + ':2379,https://' + master2_ip + ':2379,https://' + master3_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add etcd1.vagrant.test https://' + etcd1_ip + ':2380 | grep ^ETCD | tee /tmp/out',note='Add node to cluster')
-		etcd1_config = shutit.send_and_get_output('cat /tmp/out')
+		shutit.send('etcdctl --endpoints https://' + master1_ip + ':2379,https://' + master2_ip + ':2379,https://' + master3_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add etcd1.vagrant.test https://' + etcd1_ip + ':2380',note='Add node to cluster')
 		shutit.send("""etcdctl --endpoints https://""" + master1_ip + """:2379,https://""" + master2_ip + """:2379,https://""" + master3_ip + """:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member remove $(etcdctl --endpoints https://""" + master1_ip + """:2379,https://""" + master2_ip + """:2379,https://""" + master3_ip + """:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list | grep master1.vagrant.test | awk -F: '{print $1}')""",note='Drop node from cluster')
-		#shutit.send('etcdctl --endpoints https://' + master2_ip + ':2379,https://' + master3_ip + ':2379,https://' + etcd1_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list',note='List nodes in cluster')
-		print(etcd1_config)
 		shutit.logout()
 		shutit.logout()
 		###############################################################################
@@ -547,20 +578,14 @@ solo true''')
 		shutit.logout()
 		################################################################################
 
-		shutit.pause_point('did etcd1 install ok? do we need to update the config? do we need to add the node to the cluster manually? query etcd, if the item is not in the member list then add it - can you etcdctl on one endpoint? it would be simpler. config to add: ')
-
-
 		###############################################################################
 		# ETCD2		
 		###############################################################################
 		# Add etcd2 to cluster and drop master2 - TODO: do this in chef?
 		shutit.login(command='vagrant ssh master1')
 		shutit.login(command='sudo su - ')
-		shutit.send('etcdctl --endpoints https://' + master2_ip + ':2379,https://' + master3_ip + ':2379,https://' + etcd1_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add etcd1.vagrant.test https://' + etcd2_ip + ':2380 | grep ^ETCD | tee /tmp/out',note='Add node to cluster')
-		etcd2_config = shutit.send_and_get_output('cat /tmp/out')
+		shutit.send('etcdctl --endpoints https://' + master2_ip + ':2379,https://' + master3_ip + ':2379,https://' + etcd1_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add etcd1.vagrant.test https://' + etcd2_ip + ':2380',note='Add node to cluster')
 		shutit.send("""etcdctl --endpoints https://""" + master2_ip + """:2379,https://""" + master3_ip + """:2379,https://""" + etcd1_ip + """:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member remove $(etcdctl --endpoints https://""" + master2_ip + """:2379,https://""" + master3_ip + """:2379,https://""" + etcd1_ip + """:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list | grep master2.vagrant.test | awk -F: '{print $1}')""",note='Drop node from cluster')
-		#shutit.send('etcdctl --endpoints https://' + master3_ip + ':2379,https://' + etcd1_ip + ':2379,https://' + etcd2_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list',note='List nodes in cluster')
-		print(etcd2_config)
 		shutit.logout()
 		shutit.logout()
 		###############################################################################
@@ -613,7 +638,7 @@ solo true''')
 	  "etcd_servers": [
 		{
 		  "fqdn": "master3.vagrant.test",
-		  "ipaddress": "''' + master2_ip + '''"
+		  "ipaddress": "''' + master3_ip + '''"
 		},
 		{
 		  "fqdn": "etcd1.vagrant.test",
@@ -660,20 +685,14 @@ solo true''')
 		################################################################################
 
 
-		shutit.pause_point('did etcd2 install ok? do we need to update the config? do we need to add the node to the cluster manually? query etcd, if the item is not in the member list then add it - can you etcdctl on one endpoint? it would be simpler. config to add: ')
-
-
 		###############################################################################
 		# ETCD3
 		###############################################################################
 		# Add etcd3 to cluster and drop master3 - TODO: do this in chef?
 		shutit.login(command='vagrant ssh master1')
 		shutit.login(command='sudo su - ')
-		shutit.send('etcdctl --endpoints https://' + master3_ip + ':2379,https://' + etcd1_ip + ':2379,https://' + etcd2_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add etcd1.vagrant.test https://' + etcd3_ip + ':2380 | grep ^ETCD | tee /tmp/out',note='Add node to cluster')
-		etcd3_config = shutit.send_and_get_output('cat /tmp/out')
+		shutit.send('etcdctl --endpoints https://' + master3_ip + ':2379,https://' + etcd1_ip + ':2379,https://' + etcd2_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add etcd1.vagrant.test https://' + etcd3_ip + ':2380',note='Add node to cluster')
 		shutit.send("""etcdctl --endpoints https://""" + master3_ip + """:2379,https://""" + etcd1_ip + """:2379,https://""" + etcd2_ip + """:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member remove $(etcdctl --endpoints https://""" + master3_ip + """:2379,https://""" + etcd1_ip + """:2379,https://""" + etcd2_ip + """:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list | grep master1.vagrant.test | awk -F: '{print $1}')""",note='Drop node from cluster')
-		#shutit.send('etcdctl --endpoints https://' + etcd1_ip + ':2379,https://' + etcd2_ip + ':2379,https://' + etcd3_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list',note='List nodes in cluster')
-		print(etcd3_config)
 		shutit.logout()
 		shutit.logout()
 		###############################################################################
@@ -774,33 +793,6 @@ solo true''')
 
 		shutit.pause_point('are we done?')
 
-
-
-
-
-		#ETCD_NAME="node4" # We know this in advance
-		#ETCD_INITIAL_CLUSTER="http://10.0.1.1:2380,,node4=http://10.0.1.4:2380" # We know this in advance, but is it different for each addition?
-		#ETCD_INITIAL_CLUSTER_STATE=existing # We know this in advance
-
-		# Do we need chef dispensation to update the etcd conf file.
-
-		################################################################################
-
-		################################################################################
-		# Do same with etcd2
-		################################################################################
-
-		################################################################################
-		# TODO: how do we run etcdctl to add nodes as a one-off using chef?
-		# FROM MASTER1
-		#if config to add is on and this == 0:
-		#	etcdctl --endpoints https://master1_ip:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list | grep etcd1.vagrant.test | wc -l
-		#then:
-		#	etcdctl --endpoints https://master1_ip:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add etcd1.vagrant.test
-		################################################################################
-		
-
-		#TODO:
 		################################################################################
 		# Update the chef config to reflect the new reality, and then run chef everywhere
 		################################################################################
