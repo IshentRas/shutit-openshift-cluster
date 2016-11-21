@@ -775,7 +775,7 @@ solo true''')
 	  ]
 	}
   }
-}''')
+}'''
 		shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''',final_chef_config)
 		# Can we do this with chef?
 		shutit.send_until('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb','.*Report handlers complete.*')
@@ -802,7 +802,7 @@ solo true''')
 			shutit.logout()
 			shutit.logout()
 
-		shutit.pause_point('is everything up and happy?')
+		shutit.pause_point('etcd should be migrated and all ok. Wait for chef to re-run everywhere')
 
 		return True
 
