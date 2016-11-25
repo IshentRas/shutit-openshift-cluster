@@ -213,16 +213,7 @@ node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
 		shutit.logout()
 		shutit.logout()
 
-		# Get backup
-		# https://docs.openshift.com/enterprise/3.2/install_config/upgrading/manual_upgrades.html#preparing-for-a-manual-upgrade
-		for machine in ('etcd1','etcd2','etcd3'):
-			shutit.login(command='vagrant ssh ' + machine)
-			shutit.login(command='sudo su - ')
-			shutit.send('ETCD_DATA_DIR=/var/lib/etcd')
-			shutit.send('etcdctl backup --data-dir $ETCD_DATA_DIR --backup-dir $ETCD_DATA_DIR.backup')
-			shutit.send('cp /etc/etcd/etcd.conf /etc/etcd/etcd.conf.bak')
-			shutit.logout()
-			shutit.logout()
+		shutit.begin_asciinema_session(title='etcd upgrade of cluster')
 		# https://docs.openshift.com/enterprise/3.2/install_config/downgrade.html
 		for machine in ('master1','master2'):
 			shutit.login(command='vagrant ssh ' + machine)
@@ -233,6 +224,16 @@ node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
 			shutit.send('systemctl stop origin-master-api')
 			shutit.send('systemctl stop origin-master-controllers')
 			shutit.send('systemctl stop origin-node')
+			shutit.logout()
+			shutit.logout()
+		# Get backup
+		# https://docs.openshift.com/enterprise/3.2/install_config/upgrading/manual_upgrades.html#preparing-for-a-manual-upgrade
+		for machine in ('etcd1','etcd2','etcd3'):
+			shutit.login(command='vagrant ssh ' + machine)
+			shutit.login(command='sudo su - ')
+			shutit.send('ETCD_DATA_DIR=/var/lib/etcd')
+			shutit.send('etcdctl backup --data-dir $ETCD_DATA_DIR --backup-dir $ETCD_DATA_DIR.backup')
+			shutit.send('cp /etc/etcd/etcd.conf /etc/etcd/etcd.conf.bak')
 			shutit.logout()
 			shutit.logout()
 		for machine in ('master1','master2','node1'):
@@ -269,8 +270,7 @@ node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
 			shutit.multisend('scp /etc/etcd/etcd.conf vagrant@' + newnode + ':',{'onnecting':'yes','assword':'vagrant'})
 			# Add node and get the output
 			shutit.login(command='ssh master1')
-			shutit.send('etcdctl --endpoints https://' + etcd1_ip + ':2379,https://' + etcd2_ip + ':2379,https://' + etcd3_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add ' + newnode + '.vagrant.test https://' + etcdip + ':2380 | grep ^ETCD > /tmp/out',note='Add node to cluster')
-			etcd_config = shutit.send_and_get_output('cat /tmp/out')
+			etcd_config = shutit.send_and_get_output('etcdctl --endpoints https://' + etcd1_ip + ':2379,https://' + etcd2_ip + ':2379,https://' + etcd3_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add ' + newnode + '.vagrant.test https://' + etcdip + ':2380 | grep ^ETCD',note='Add node to cluster')
 			shutit.logout()
 			shutit.login(command='ssh ' + newnode)
 			shutit.install('etcd')
@@ -282,7 +282,7 @@ node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
 			shutit.send(r"""sed -i 's/ETCD_LISTEN_PEER_URLS=https:\/\/""" + etcd1_ip + r""":2380/ETCD_LISTEN_PEER_URLS=https:\/\/""" + etcdip + """:2380/g' /etc/etcd/etcd.conf""")
 			shutit.send(r"""sed -i 's/ETCD_LISTEN_CLIENT_URLS=https:\/\/""" + etcd1_ip + r""":2379/ETCD_LISTEN_CLIENT_URLS=https:\/\/""" + etcdip + """:2379/g' /etc/etcd/etcd.conf""")
 			shutit.send(r"""sed -i 's/ETCD_INITIAL_ADVERTISE_PEER_URLS=https:\/\/""" + etcd1_ip + r""":2380/ETCD_INITIAL_ADVERTISE_PEER_URLS=https:\/\/""" + etcdip + """:2380/g' /etc/etcd/etcd.conf""")
-			shutit.send(r"""sed -i 's/ETCD_ADVERTISE_CLIENT_URLS=https:\/\/""" + etcd1_ip r""":2379/ETCD_INITIAL_ADVERTISE_CLIENT_URLS=https:\/\/""" + etcdip + """:2379/g' /etc/etcd/etcd.conf""")
+			shutit.send(r"""sed -i 's/ETCD_ADVERTISE_CLIENT_URLS=https:\/\/""" + etcd1_ip + r""":2379/ETCD_INITIAL_ADVERTISE_CLIENT_URLS=https:\/\/""" + etcdip + """:2379/g' /etc/etcd/etcd.conf""")
 			shutit.send(r"""sed -i 's/^ETCD_NAME=.*//' /etc/etcd/etcd.conf""")
 			shutit.send(r"""sed -i 's/^ETCD_INITIAL_CLUSTER=.*//' /etc/etcd/etcd.conf""")
 			shutit.send(r"""sed -i 's/^ETCD_INITIAL_CLUSTER_STATE=.*//' /etc/etcd/etcd.conf""")
@@ -298,16 +298,13 @@ END''')
 		shutit.login(command='vagrant ssh master1')
 		shutit.login(command='sudo su - ')
 		# Note new list of endpoints
-		shutit.send("""etcdctl --endpoints https://""" + etcd4_ip + """:2379,https://""" + etcd5_ip + r""":2379,https://""" + etcd6_ip + r""":2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list | grep name.etcd1 | awk -F: '{print $1}' > /tmp/out""")
-		etcd1_id = shutit.send_and_get_output('cat /tmp/out')
+		etcd1_id = shutit.send_and_get_output("""etcdctl --endpoints https://""" + etcd4_ip + """:2379,https://""" + etcd5_ip + r""":2379,https://""" + etcd6_ip + r""":2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list | grep name.etcd1 | awk -F: '{print $1}'""")
 		shutit.send('etcdctl --endpoints https://' + etcd4_ip + ':2379,https://' + etcd5_ip + r':2379,https://' + etcd6_ip + r':2379  --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member remove ' + etcd1_id,note='Add node to cluster')
 
-		shutit.send("""etcdctl --endpoints https://""" + etcd4_ip + """:2379,https://""" + etcd5_ip + r""":2379,https://""" + etcd6_ip + r""":2379  --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list | grep name.etcd2 | awk -F: '{print $1}' > /tmp/out""")
-		etcd2_id = shutit.send_and_get_output('cat /tmp/out')
+		etcd2_id = shutit.send_and_get_output("""etcdctl --endpoints https://""" + etcd4_ip + """:2379,https://""" + etcd5_ip + r""":2379,https://""" + etcd6_ip + r""":2379  --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list | grep name.etcd2 | awk -F: '{print $1}'""")
 		shutit.send('etcdctl --endpoints ' + etcd4_ip + ':2379,https://' + etcd5_ip + r':2379,https://' + etcd6_ip + r':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member remove ' + etcd2_id,note='Add node to cluster')
 
-		shutit.send("""etcdctl --endpoints https://""" + etcd4_ip + """:2379,https://""" + etcd5_ip + r""":2379,https://""" + etcd6_ip + r""":2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list | grep name.etcd3 | awk -F: '{print $1}' > /tmp/out""")
-		etcd3_id = shutit.send_and_get_output('cat /tmp/out')
+		etcd3_id = shutit.send_and_get_output("""etcdctl --endpoints https://""" + etcd4_ip + """:2379,https://""" + etcd5_ip + r""":2379,https://""" + etcd6_ip + r""":2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list | grep name.etcd3 | awk -F: '{print $1}'""")
 		shutit.send('etcdctl --endpoints ' + etcd4_ip + ':2379,https://' + etcd5_ip + r':2379,https://' + etcd6_ip + r':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member remove ' + etcd3_id,note='Add node to cluster')
 		shutit.logout()
 		shutit.logout()
@@ -351,6 +348,7 @@ END''')
 		# Need to set masters as schedulable (why? - ansible seems to un-schedule them)
 		shutit.send('oadm manage-node master1.vagrant.test --schedulable')
 		shutit.send('oadm manage-node master2.vagrant.test --schedulable')
+		shutit.end_asciinema_session()
 		shutit.logout()
 		shutit.logout()
 		shutit.pause_point('etcd cluster moved and ansible re-run. all should be a-ok now.')
