@@ -90,7 +90,10 @@ Vagrant.configure("2") do |config|
 end''')
 		machine_names = ('master1','master2','etcd1','etcd2','etcd3','node1','node2')
 		machines = ('master1.vagrant.test','master2.vagrant.test','node2.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test')
-		pw = shutit.get_env_pass()
+		if shutit.whoami() != 'root':
+			pw = shutit.get_env_pass()
+		else:
+			pw = ''
 		for machine in machine_names:
 			shutit.multisend('vagrant up --provider ' + shutit.cfg['shutit-library.virtualization.virtualization.virtualization']['virt_method'] + ' ' + machine,{'assword for':pw},timeout=99999)
 		###############################################################################
@@ -221,13 +224,86 @@ solo true''',note='Create solo.rb file')
 		shutit.login(command='vagrant ssh master1')
 		shutit.login(command='sudo su - ')
 		shutit.send_until('oc get all','.*kubernetes.*',cadence=60,note='Wait until oc get all returns OK')
+		shutit.send_until('oc get nodes','master1.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
+		shutit.send_until('oc get nodes','master2.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
+		shutit.send_until('oc get nodes','node1.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
+		shutit.send_until('oc get nodes','node2.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
 		#shutit.end_asciinema_session()
 
+		shutit.send('yum install -y https://packages.chef.io/stable/el/7/chefdk-1.0.3-1.el7.x86_64.rpm')
 		shutit.send('oc label node master1.vagrant.test region=registry')
 		shutit.send("""oadm registry --config=/etc/origin/master/admin.kubeconfig --service-account=registry --images='registry.access.redhat.com/openshift3/ose-${component}:${version}' --selector=region=registry""",note='Create an ephemeral registry.',check_exit=False)
 		shutit.send("""oc create route passthrough --service registry-console --port registry-console -n default""",note='Create route for reg console')
 		shutit.send("""oc new-app -n default --template=registry-console -p OPENSHIFT_OAUTH_PROVIDER_URL="https://master1.vagrant.test:8443",REGISTRY_HOST=$(oc get route docker-registry -n default --template='{{ .spec.host }}'),COCKPIT_KUBE_URL=$(oc get route registry-console -n default --template='https://{{ .spec.host }}')""")
-		shutit.pause_point('all ok?')
+		shutit.send('cd /root/chef-solo-example/cookbooks')
+		shutit.send('chef generate cookbook ose-wrapper')
+		shutit.send_file('/root/chef-solo-example/cookbooks/ose-wrapper/recipes/default.rb','''master_servers = node['cookbook-openshift3']['master_servers']
+etcd_upgrade_servers = node['ose-wrapper']['etcd_upgrade_servers']
+shutdown_servers = node['ose-wrapper']['shutdown_servers']
+
+# - etcd_migration_new_node:               "https://etcd1.net.thing:2380"
+# - etcd_migration_drop_node:              "https://master1.net.thing"
+if master_servers.any? && master_servers.first['fqdn'] == node['fqdn'] && node['ose-wrapper']['etcd_migration_endpoint'] && node['ose-wrapper']['etcd_migration_new_node'] && node['ose-wrapper']['etcd_migration_drop_node']
+  # Switched off by default - step 6
+  execute 'Add node to etcd cluster' do
+    command "[[ $(etcdctl --endpoints #{node['ose-wrapper']['etcd_migration_endpoint']} \
+             --ca-file #{node['cookbook-openshift3']['etcd_ca_cert']} --cert-file #{node['cookbook-openshift3']['etcd_conf_dir']}/master.etcd-client.key \
+             member add #{node['ose-wrapper']['etcd_migration_new_node']}) ]]"
+    only_if "[[ $(etcdctl --endpoints #{node['ose-wrapper']['etcd_migration_endpoint']} \
+             --ca-file #{node['cookbook-openshift3']['etcd_ca_cert']} --cert-file #{node['cookbook-openshift3']['etcd_conf_dir']}/master.etcd-client.key \
+             member list | grep #{node['ose-wrapper']['etcd_migration_new_node']} | wc -l) == '0' ]]"
+  end
+
+  execute 'Drop node from etcd cluster' do
+    command "[[ $(etcdctl --endpoints #{node['ose-wrapper']['etcd_migration_endpoint']} \
+             --ca-file #{node['cookbook-openshift3']['etcd_ca_cert']} --cert-file #{node['cookbook-openshift3']['etcd_conf_dir']}/master.etcd-client.key \
+             member remove $(etcdctl --endpoints #{node['ose-wrapper']['etcd_migration_endpoint']} \
+             --ca-file #{node['cookbook-openshift3']['etcd_ca_cert']} --cert-file #{node['cookbook-openshift3']['etcd_conf_dir']}/master.etcd-client.key \
+             member list | grep #{node['ose-wrapper']['etcd_migration_drop_node']} | awk -F: '{print $1}')) ]]"
+    only_if "[[ $(etcdctl --endpoints #{node['ose-wrapper']['etcd_migration_endpoint']} \
+             --ca-file #{node['cookbook-openshift3']['etcd_ca_cert']} --cert-file #{node['cookbook-openshift3']['etcd_conf_dir']}/master.etcd-client.key \
+             member list | grep #{node['ose-wrapper']['etcd_migration_drop_node']} | wc -l) == '1' ]]"
+  end
+end
+
+if etcd_upgrade_servers.find { |server_node| server_node['fqdn'] == node['fqdn'] }
+  bash 'Install migrated etcd if not done already' do
+    code <<-EOF
+      systemctl stop etcd
+      sed -i 's/ETCD_INITIAL_CLUSTER_STATE=.*/ETCD_INITIAL_CLUSTER_STATE=existing/' /etc/etcd/etcd.conf
+      mv /var/lib/etcd/member/wal/*.wal /var/lib/etcd/.deleteme.wal
+      systemctl start etcd
+      touch /var/lib/etcd/.migrated
+    EOF
+    not_if '[[ -a /var/lib/etcd/.migrated ]]'
+  end
+end
+
+# Stop all core OpenShift services
+if shutdown_servers.find { |server_node| server_node['fqdn'] == node['fqdn'] }
+  service 'atomic_openshift_master_controllers' do
+    service_name 'atomic-openshift-master-controllers'
+    action [:stop, :disable]
+  end
+  service 'atomic_openshift_master_api' do
+    service_name 'atomic-openshift-master-api'
+    action [:stop, :disable]
+  end
+  service 'atomic_openshift_node' do
+    service_name 'atomic-openshift-node'
+    action [:stop, :disable]
+  end
+end''')
+		shutit.send('mkdir -p /root/chef-solo-example/cookbooks/ose-wrapper/attributes')
+		shutit.send_file('/root/chef-solo-example/cookbooks/ose-wrapper/attributes/default.rb','''default['ose-wrapper']['etcd_upgrade_servers'] = []
+default['ose-wrapper']['shutdown_servers'] = []
+default['ose-wrapper']['etcd_migration_endpoint'] = nil
+default['ose-wrapper']['etcd_migration_new_node'] = nil
+default['ose-wrapper']['etcd_migration_drop_node'] = nil''')
+
+		shutit.pause_point('see comments following')
+# CHANGE THE CRONTAB WITH new recipes
+# CHANGE THE ENV FILE
 		shutit.logout()
 		shutit.logout()
 		###############################################################################
