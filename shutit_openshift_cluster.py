@@ -81,9 +81,14 @@ Vagrant.configure("2") do |config|
     node2.vm.hostname = "node2.vagrant.test"
   end
 end''')
-		password = shutit.get_env_pass()
+		machine_names = ('master1','master2','etcd1','etcd2','etcd3','node1','node2')
+		machines = ('master1.vagrant.test','master2.vagrant.test','node2.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test')
+		if shutit.whoami() != 'root':
+			pw = shutit.get_env_pass()
+		else:
+			pw = ''
 		for machine in machine_names:
-			shutit.multisend('vagrant up ' + machine,{'assword':password},timeout=99999)
+			shutit.multisend('vagrant up ' + machine,{'assword':pw},timeout=99999)
 		master1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^master1.vagrant.test | awk '{print $2}'""")
 		master2_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^master2.vagrant.test | awk '{print $2}'""")
 		master3_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^master3.vagrant.test | awk '{print $2}'""")
