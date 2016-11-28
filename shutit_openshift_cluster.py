@@ -302,8 +302,6 @@ default['ose-wrapper']['etcd_migration_new_node'] = nil
 default['ose-wrapper']['etcd_migration_drop_node'] = nil''')
 
 		shutit.pause_point('see comments following')
-# CHANGE THE CRONTAB WITH new recipes
-# CHANGE THE ENV FILE
 		shutit.logout()
 		shutit.logout()
 		###############################################################################
