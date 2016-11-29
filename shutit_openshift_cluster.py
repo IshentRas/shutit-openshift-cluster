@@ -209,7 +209,6 @@ solo true''',note='Create solo.rb file')
 		shutit.send_until('oc get nodes','master3.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
 		shutit.send_until('oc get nodes','node1.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
 		#shutit.end_asciinema_session()
-		shutit.pause_point('')
 		shutit.send('yum install -y https://packages.chef.io/stable/el/7/chefdk-1.0.3-1.el7.x86_64.rpm')
 		shutit.send('oc label node master1.vagrant.test region=registry')
 		shutit.send("""oadm registry --config=/etc/origin/master/admin.kubeconfig --service-account=registry --images='registry.access.redhat.com/openshift3/ose-${component}:${version}' --selector=region=registry""",note='Create an ephemeral registry.',check_exit=False)
@@ -221,28 +220,40 @@ solo true''',note='Create solo.rb file')
 etcd_upgrade_servers = node['ose-wrapper']['etcd_upgrade_servers']
 shutdown_servers = node['ose-wrapper']['shutdown_servers']
 
-# - etcd_migration_new_node:               "https://master3.net.thing:2380"
-# - etcd_migration_drop_node:              "https://master1.net.thing"
-if master_servers.any? && master_servers.first['fqdn'] == node['fqdn'] && node['ose-wrapper']['etcd_migration_endpoint'] && node['ose-wrapper']['etcd_migration_new_node'] && node['ose-wrapper']['etcd_migration_drop_node']
+# - etcd_migration_endpoint_ip:            "https://172.28.128.3"
+# - etcd_migration_new_node:               "https://node1.vagrant.test"
+# - etcd_migration_drop_node:              "https://master3.vagrant.test"
+if master_servers.any? && master_servers.first['fqdn'] == node['fqdn'] && node['ose-wrapper']['etcd_migration_endpoint_ip'] && node['ose-wrapper']['etcd_migration_new_node'] && node['ose-wrapper']['etcd_migration_drop_node']
   # Switched off by default - step 6
   execute 'Add node to etcd cluster' do
-    command "[[ $(etcdctl --endpoints #{node['ose-wrapper']['etcd_migration_endpoint']} \
-             --ca-file #{node['cookbook-openshift3']['etcd_ca_cert']} --cert-file #{node['cookbook-openshift3']['etcd_conf_dir']}/master.etcd-client.key \
-             member add #{node['ose-wrapper']['etcd_migration_new_node']}) ]]"
-    only_if "[[ $(etcdctl --endpoints #{node['ose-wrapper']['etcd_migration_endpoint']} \
-             --ca-file #{node['cookbook-openshift3']['etcd_ca_cert']} --cert-file #{node['cookbook-openshift3']['etcd_conf_dir']}/master.etcd-client.key \
-             member list | grep #{node['ose-wrapper']['etcd_migration_new_node']} | wc -l) == '0' ]]"
+    command "etcdctl --endpoints #{node['ose-wrapper']['etcd_migration_endpoint_ip']}:#{node['cookbook-openshift3']['etcd_client_port']} \
+                     --ca-file   #{node['cookbook-openshift3']['openshift_master_config_dir']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}ca.crt \
+                     --cert-file #{node['cookbook-openshift3']['openshift_master_config_dir']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}client.crt \
+                     --key-file  #{node['cookbook-openshift3']['openshift_master_config_dir']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}client.key \
+                     member add  #{node['ose-wrapper']['etcd_migration_new_node']}:#{node['cookbook-openshift3']['etcd_peer_port']}"
+    only_if "[[ $(etcdctl --endpoints #{node['ose-wrapper']['etcd_migration_endpoint_ip']}:#{node['cookbook-openshift3']['etcd_client_port']} \
+                          --ca-file   #{node['cookbook-openshift3']['openshift_master_config_dir']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}ca.crt \
+                          --cert-file #{node['cookbook-openshift3']['openshift_master_config_dir']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}client.crt \
+                          --key-file  #{node['cookbook-openshift3']['openshift_master_config_dir']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}client.key \
+                          member list | grep #{node['ose-wrapper']['etcd_migration_new_node']} | wc -l) == '0' ]]"
   end
 
   execute 'Drop node from etcd cluster' do
-    command "[[ $(etcdctl --endpoints #{node['ose-wrapper']['etcd_migration_endpoint']} \
-             --ca-file #{node['cookbook-openshift3']['etcd_ca_cert']} --cert-file #{node['cookbook-openshift3']['etcd_conf_dir']}/master.etcd-client.key \
-             member remove $(etcdctl --endpoints #{node['ose-wrapper']['etcd_migration_endpoint']} \
-             --ca-file #{node['cookbook-openshift3']['etcd_ca_cert']} --cert-file #{node['cookbook-openshift3']['etcd_conf_dir']}/master.etcd-client.key \
-             member list | grep #{node['ose-wrapper']['etcd_migration_drop_node']} | awk -F: '{print $1}')) ]]"
-    only_if "[[ $(etcdctl --endpoints #{node['ose-wrapper']['etcd_migration_endpoint']} \
-             --ca-file #{node['cookbook-openshift3']['etcd_ca_cert']} --cert-file #{node['cookbook-openshift3']['etcd_conf_dir']}/master.etcd-client.key \
-             member list | grep #{node['ose-wrapper']['etcd_migration_drop_node']} | wc -l) == '1' ]]"
+    command "etcdctl --endpoints #{node['ose-wrapper']['etcd_migration_endpoint_ip']}:#{node['cookbook-openshift3']['etcd_client_port']} \
+                     --ca-file   #{node['cookbook-openshift3']['openshift_master_config_dir']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}ca.crt \
+                     --cert-file #{node['cookbook-openshift3']['openshift_master_config_dir']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}client.crt \
+                     --key-file  #{node['cookbook-openshift3']['openshift_master_config_dir']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}client.key \
+                     member remove \
+                       $(etcdctl --endpoints #{node['ose-wrapper']['etcd_migration_endpoint_ip']}:#{node['cookbook-openshift3']['etcd_client_port']}} \
+                                 --ca-file   #{node['cookbook-openshift3']['openshift_master_config_dir']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}ca.crt \
+                                 --cert-file #{node['cookbook-openshift3']['openshift_master_config_dir']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}client.crt \
+                                 --key-file  #{node['cookbook-openshift3']['openshift_master_config_dir']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}client.key \
+                                 member list | grep #{node['ose-wrapper']['etcd_migration_drop_node']} | awk -F: '{print $1}')"
+    only_if "[[ $(etcdctl --endpoints #{node['ose-wrapper']['etcd_migration_endpoint_ip']}:#{node['cookbook-openshift3']['etcd_client_port']} \
+                          --ca-file   #{node['cookbook-openshift3']['openshift_master_config_dir']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}ca.crt \
+                          --cert-file #{node['cookbook-openshift3']['openshift_master_config_dir']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}client.crt \
+                          --key-file  #{node['cookbook-openshift3']['openshift_master_config_dir']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}client.key \
+                          member list | grep #{node['ose-wrapper']['etcd_migration_drop_node']} | wc -l) == '1' ]]"
   end
 end
 
@@ -277,11 +288,15 @@ end''')
 		shutit.send('mkdir -p /root/chef-solo-example/cookbooks/ose-wrapper/attributes')
 		shutit.send_file('/root/chef-solo-example/cookbooks/ose-wrapper/attributes/default.rb','''default['ose-wrapper']['etcd_upgrade_servers'] = []
 default['ose-wrapper']['shutdown_servers'] = []
-default['ose-wrapper']['etcd_migration_endpoint'] = nil
+default['ose-wrapper']['etcd_migration_endpoint_ip'] = nil
 default['ose-wrapper']['etcd_migration_new_node'] = nil
-default['ose-wrapper']['etcd_migration_drop_node'] = nil''')
+default['ose-wrapper']['etcd_migration_drop_node'] = nil
+#default['ose-wrapper']['etcd_migration_endpoint_ip'] = 'https://172.28.128.3'
+#default['ose-wrapper']['etcd_migration_new_node'] = "https://node1.vagrant.test"
+#default['ose-wrapper']['etcd_migration_drop_node'] = "https://master3.vagrant.test"
+''')
 
-		shutit.pause_point('see comments following')
+		shutit.pause_point('''see comments following: chef-solo --environment ocp-cluster-environment -o 'recipe[ose-wrapper],recipe[cookbook-openshift3::common]' -c ~/chef-solo-example/solo.rb''')
 # CHANGE THE CRONTAB WITH new recipes
 # CHANGE THE ENV FILE
 		shutit.logout()
