@@ -78,45 +78,14 @@ end''')
 		master2_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^master2.vagrant.test | awk '{print $2}'""")
 		master3_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^master3.vagrant.test | awk '{print $2}'""")
 		node1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^node1.vagrant.test | awk '{print $2}'""")
-		#shutit.begin_asciinema_session(title='chef shutit multinode setup')
-		for machine in machine_names:
-			shutit.login(command='vagrant ssh ' + machine)
-			shutit.login(command='sudo su - ')
-			shutit.send('''sed -i 's/enabled=1/enabled=0/' /etc/yum/pluginconf.d/fastestmirror.conf''',note='Switch off fastest mirror - it gives me nothing but grief (looooong waits')
-			shutit.send('rm -fr /var/cache/yum/*')
-			shutit.send('yum clean all')
-			shutit.install('xterm')
-			shutit.install('net-tools')
-			shutit.install('git')
-			# Allow logins via ssh between machines
-			shutit.send('''sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config''',note='Allow logins between machines')
-			shutit.send('echo root:origin | /usr/sbin/chpasswd',note='set root password')
-			shutit.send('systemctl restart sshd',note='restart sshd')
-			shutit.install('epel-release')
-			shutit.send('rpm -i https://packages.chef.io/stable/el/7/chef-12.16.42-1.el7.x86_64.rpm',note='install chef')
-			shutit.send('mkdir -p /root/chef-solo-example /root/chef-solo-example/cookbooks /root/chef-solo-example/environments /root/chef-solo-example/logs',note='Create chef folders')
-			shutit.send('cd /root/chef-solo-example/cookbooks')
-			shutit.send('git clone https://github.com/IshentRas/cookbook-openshift3',note='Clone chef repo')
-			# Filthy hack to 'override' the node['ipaddress'] value
-			ip_addr = shutit.send_and_get_output("""ip -4 addr show dev eth1 | grep inet | awk '{print $2}' | awk -F/ '{print $1}'""")
-			shutit.send('''sed -i 's/#{node..ipaddress..}/''' + ip_addr + '''/g' /root/chef-solo-example/cookbooks/cookbook-openshift3/attributes/default.rb''')
-			shutit.send("""sed -i "s/node..ipaddress../'""" + ip_addr + """'/g" /root/chef-solo-example/cookbooks/cookbook-openshift3/attributes/default.rb""")
-
-			shutit.send('curl -L https://supermarket.chef.io/cookbooks/iptables/download | tar -zxvf -',note='Get cookbook dependencies')
-			shutit.send('curl -L https://supermarket.chef.io/cookbooks/yum/download | tar -zxvf -')
-			shutit.send('curl -L https://supermarket.chef.io/cookbooks/selinux_policy/download | tar -zxvf -')
-			shutit.send('curl -L https://supermarket.chef.io/cookbooks/compat_resource/download | tar -zxvf -')
-			shutit.send_file('/root/chef-solo-example/solo.rb','''cookbook_path [
-			   '/root/chef-solo-example/cookbooks',
-			   '/root/chef-solo-example/site-cookbooks'
-			  ]
-environment_path '/root/chef-solo-example/environments'
-file_backup_path '/root/chef-solo-example/backup'
-file_cache_path '/root/chef-solo-example/cache'
-log_location STDOUT
-solo true''',note='Create solo.rb file')
-
-			shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''','''{
+		ose_wrapper_default_attributes = '''default['ose-wrapper']['etcd_upgrade_servers'] = []
+default['ose-wrapper']['shutdown_servers'] = []
+default['ose-wrapper']['etcd_migration_endpoint_ip'] = nil
+default['ose-wrapper']['etcd_migration_new_node_ip'] = nil
+default['ose-wrapper']['etcd_migration_new_node_name'] = nil
+default['ose-wrapper']['etcd_migration_drop_node'] = nil
+'''
+		environment_file_before = '''{
   "name": "ocp-cluster-environment",
   "description": "",
   "cookbook_versions": {
@@ -190,7 +159,120 @@ solo true''',note='Create solo.rb file')
 	  ]
 	}
   }
-}''',note='Create environment file')
+}'''
+		environment_file_after = '''{
+  "name": "ocp-cluster-environment",
+  "description": "",
+  "cookbook_versions": {
+									  },
+  "json_class": "Chef::Environment",
+  "chef_type": "environment",
+  "default_attributes": {
+
+  },
+  "override_attributes": {
+	"cookbook-openshift3": {
+	  "openshift_HA": true,
+	  "openshift_cluster_name": "master1.vagrant.test",
+	  "openshift_master_cluster_vip": "''' + master1_ip + '''",
+	  "openshift_deployment_type": "origin",
+	  "master_servers": [
+		{
+		  "fqdn": "master1.vagrant.test",
+		  "ipaddress": "''' + master1_ip + '''"
+		},
+		{
+		  "fqdn": "master2.vagrant.test",
+		  "ipaddress": "''' + master2_ip + '''"
+		},
+		{
+		  "fqdn": "master3.vagrant.test",
+		  "ipaddress": "''' + master3_ip + '''"
+		}
+	  ],
+	  "master_peers": [
+		{
+		  "fqdn": "master2.vagrant.test",
+		  "ipaddress": "''' + master2_ip + '''"
+		},
+		{
+		  "fqdn": "master3.vagrant.test",
+		  "ipaddress": "''' + master3_ip + '''"
+		}
+	  ],
+	  "etcd_servers": [
+		{
+		  "fqdn": "master1.vagrant.test",
+		  "ipaddress": "''' + master1_ip + '''"
+		},
+		{
+		  "fqdn": "master2.vagrant.test",
+		  "ipaddress": "''' + master2_ip + '''"
+		},
+		{
+		  "fqdn": "node1.vagrant.test",
+		  "ipaddress": "''' + node1_ip + '''"
+		}
+	  ],
+	  "node_servers": [
+		{
+		  "fqdn": "node1.vagrant.test",
+		  "ipaddress": "''' + node1_ip + '''"
+		},
+		{
+		  "fqdn": "master1.vagrant.test",
+		  "ipaddress": "''' + master1_ip + '''"
+		},
+		{
+		  "fqdn": "master2.vagrant.test",
+		  "ipaddress": "''' + master2_ip + '''"
+		},
+		{
+		  "fqdn": "master3.vagrant.test",
+		  "ipaddress": "''' + master3_ip + '''"
+		}
+	  ]
+	}
+  }
+}'''
+		#shutit.begin_asciinema_session(title='chef shutit multinode setup')
+		for machine in machine_names:
+			shutit.login(command='vagrant ssh ' + machine)
+			shutit.login(command='sudo su - ')
+			shutit.send('''sed -i 's/enabled=1/enabled=0/' /etc/yum/pluginconf.d/fastestmirror.conf''',note='Switch off fastest mirror - it gives me nothing but grief (looooong waits')
+			shutit.send('rm -fr /var/cache/yum/*')
+			shutit.send('yum clean all')
+			shutit.install('xterm')
+			shutit.install('net-tools')
+			shutit.install('git')
+			# Allow logins via ssh between machines
+			shutit.send('''sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config''',note='Allow logins between machines')
+			shutit.send('echo root:origin | /usr/sbin/chpasswd',note='set root password')
+			shutit.send('systemctl restart sshd',note='restart sshd')
+			shutit.install('epel-release')
+			shutit.send('rpm -i https://packages.chef.io/stable/el/7/chef-12.16.42-1.el7.x86_64.rpm',note='install chef')
+			shutit.send('mkdir -p /root/chef-solo-example /root/chef-solo-example/cookbooks /root/chef-solo-example/environments /root/chef-solo-example/logs',note='Create chef folders')
+			shutit.send('cd /root/chef-solo-example/cookbooks')
+			shutit.send('git clone https://github.com/IshentRas/cookbook-openshift3',note='Clone chef repo')
+			# Filthy hack to 'override' the node['ipaddress'] value
+			ip_addr = shutit.send_and_get_output("""ip -4 addr show dev eth1 | grep inet | awk '{print $2}' | awk -F/ '{print $1}'""")
+			shutit.send('''sed -i 's/#{node..ipaddress..}/''' + ip_addr + '''/g' /root/chef-solo-example/cookbooks/cookbook-openshift3/attributes/default.rb''')
+			shutit.send("""sed -i "s/node..ipaddress../'""" + ip_addr + """'/g" /root/chef-solo-example/cookbooks/cookbook-openshift3/attributes/default.rb""")
+
+			shutit.send('curl -L https://supermarket.chef.io/cookbooks/iptables/download | tar -zxvf -',note='Get cookbook dependencies')
+			shutit.send('curl -L https://supermarket.chef.io/cookbooks/yum/download | tar -zxvf -')
+			shutit.send('curl -L https://supermarket.chef.io/cookbooks/selinux_policy/download | tar -zxvf -')
+			shutit.send('curl -L https://supermarket.chef.io/cookbooks/compat_resource/download | tar -zxvf -')
+			shutit.send_file('/root/chef-solo-example/solo.rb','''cookbook_path [
+			   '/root/chef-solo-example/cookbooks',
+			   '/root/chef-solo-example/site-cookbooks'
+			  ]
+environment_path '/root/chef-solo-example/environments'
+file_backup_path '/root/chef-solo-example/backup'
+file_cache_path '/root/chef-solo-example/cache'
+log_location STDOUT
+solo true''',note='Create solo.rb file')
+			shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''',environment_file_before,note='Create environment file')
 			shutit.logout()
 			shutit.logout()
 
@@ -208,6 +290,19 @@ solo true''',note='Create solo.rb file')
 		shutit.send_until('oc get nodes','master2.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
 		shutit.send_until('oc get nodes','master3.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
 		shutit.send_until('oc get nodes','node1.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
+		shutit.logout()
+		shutit.logout()
+
+		# Turn off the crontab
+		for machine in machine_names:
+			shutit.login(command='vagrant ssh ' + machine)
+			shutit.login(command='sudo su - ')
+			shutit.send('echo "#*/5 * * * * chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1" | crontab',note='set up crontab on ' + machine)
+			shutit.logout()
+			shutit.logout()
+		
+		shutit.login(command='vagrant ssh master1')
+		shutit.login(command='sudo su - ')
 		#shutit.end_asciinema_session()
 		shutit.send('yum install -y https://packages.chef.io/stable/el/7/chefdk-1.0.3-1.el7.x86_64.rpm')
 		shutit.send('oc label node master1.vagrant.test region=registry')
@@ -216,7 +311,7 @@ solo true''',note='Create solo.rb file')
 		shutit.send("""oc new-app -n default --template=registry-console -p OPENSHIFT_OAUTH_PROVIDER_URL="https://master1.vagrant.test:8443",REGISTRY_HOST=$(oc get route docker-registry -n default --template='{{ .spec.host }}'),COCKPIT_KUBE_URL=$(oc get route registry-console -n default --template='https://{{ .spec.host }}')""")
 		shutit.send('cd /root/chef-solo-example/cookbooks')
 		shutit.send('chef generate cookbook ose-wrapper')
-		shutit.send_file('/root/chef-solo-example/cookbooks/ose-wrapper/recipes/default.rb','''master_servers = node['cookbook-openshift3']['master_servers']
+		ose_wrapper_default_recipe = '''master_servers = node['cookbook-openshift3']['master_servers']
 etcd_upgrade_servers = node['ose-wrapper']['etcd_upgrade_servers']
 shutdown_servers = node['ose-wrapper']['shutdown_servers']
 
@@ -231,7 +326,7 @@ if master_servers.any? && master_servers.first['fqdn'] == node['fqdn'] && node['
                      --ca-file   #{node['cookbook-openshift3']['openshift_master_config_dir']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}ca.crt \
                      --cert-file #{node['cookbook-openshift3']['openshift_master_config_dir']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}client.crt \
                      --key-file  #{node['cookbook-openshift3']['openshift_master_config_dir']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}client.key \
-                     member add  https://#{node['ose-wrapper']['etcd_migration_new_node_name']} https://#{node['ose-wrapper']['etcd_migration_new_node_ip']}:#{node['cookbook-openshift3']['etcd_peer_port']}"
+                     member add #{node['ose-wrapper']['etcd_migration_new_node_name']} https://#{node['ose-wrapper']['etcd_migration_new_node_ip']}:#{node['cookbook-openshift3']['etcd_peer_port']}"
     only_if "[[ $(etcdctl --endpoints https://#{node['ose-wrapper']['etcd_migration_endpoint_ip']}:#{node['cookbook-openshift3']['etcd_client_port']} \
                           --ca-file   #{node['cookbook-openshift3']['openshift_master_config_dir']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}ca.crt \
                           --cert-file #{node['cookbook-openshift3']['openshift_master_config_dir']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}client.crt \
@@ -285,27 +380,41 @@ if shutdown_servers.find { |server_node| server_node['fqdn'] == node['fqdn'] }
     service_name 'atomic-openshift-node'
     action [:stop, :disable]
   end
-end''')
+end'''
+		shutit.send_file('/root/chef-solo-example/cookbooks/ose-wrapper/recipes/default.rb',ose_wrapper_default_recipe)
 		shutit.send('mkdir -p /root/chef-solo-example/cookbooks/ose-wrapper/attributes')
-		shutit.send_file('/root/chef-solo-example/cookbooks/ose-wrapper/attributes/default.rb','''default['ose-wrapper']['etcd_upgrade_servers'] = []
-default['ose-wrapper']['shutdown_servers'] = []
-default['ose-wrapper']['etcd_migration_endpoint_ip'] = nil
-default['ose-wrapper']['etcd_migration_new_node_ip'] = nil
-default['ose-wrapper']['etcd_migration_new_node_name'] = nil
-default['ose-wrapper']['etcd_migration_drop_node'] = nil
-#default['ose-wrapper']['etcd_migration_new_node_name'] = "node1.vagrant.test"
-#default['ose-wrapper']['etcd_migration_drop_node'] = "master3.vagrant.test"
-''')
-		master3_ip = shutit.send_and_get_output("""host master3.vagrant.test | head -1 | awk '{print $NF}'""")
-		node1_ip = shutit.send_and_get_output("""host node1.vagrant.test | head -1 | awk '{print $NF}'""")
-		shutit.send("""sed -i "s/.*etcd_migration_endpoint_ip.*/default['ose-wrapper']['etcd_migration_endpoint_ip'] = '""" + master3_ip + """'/" /root/chef-solo-example/cookbooks/ose-wrapper/attributes/default.rb""")
-		shutit.send("""sed -i "s/.*etcd_migration_new_node_ip.*/default['ose-wrapper']['etcd_migration_endpoint_ip'] = '""" + node1_ip + """'/" /root/chef-solo-example/cookbooks/ose-wrapper/attributes/default.rb""")
+		shutit.send_file('/root/chef-solo-example/cookbooks/ose-wrapper/attributes/default.rb',ose_wrapper_default_attributes)
+		shutit.send("""sed -i "s/.*etcd_migration_endpoint_ip.*/default['ose-wrapper']['etcd_migration_endpoint_ip'] = '""" + master1_ip + """'/" /root/chef-solo-example/cookbooks/ose-wrapper/attributes/default.rb""")
+		shutit.send("""sed -i "s/.*etcd_migration_new_node_ip.*/default['ose-wrapper']['etcd_migration_new_node_ip'] = '""" + node1_ip + """'/" /root/chef-solo-example/cookbooks/ose-wrapper/attributes/default.rb""")
 		shutit.send("""sed -i "s/.*etcd_migration_new_node_name.*/default['ose-wrapper']['etcd_migration_new_node_name'] = 'node1.vagrant.test'/" /root/chef-solo-example/cookbooks/ose-wrapper/attributes/default.rb""")
 		shutit.send("""sed -i "s/.*etcd_migration_drop_node.*/default['ose-wrapper']['etcd_migration_drop_node'] = 'master3.vagrant.test'/" /root/chef-solo-example/cookbooks/ose-wrapper/attributes/default.rb""")
-		shutit.send("""chef-solo --environment ocp-cluster-environment -c ~/chef-solo-example/solo.rb -o 'recipe[ose-wrapper],recipe[cookbook-openshift3]' -l debug | tee out""")
-		shutit.pause_point("""check out file""")
+		# SHUT DOWN OPENSHIFT ON ALL NODES? WILL THAT BREAK ETCD?
+		shutit.send("""chef-solo --environment ocp-cluster-environment -c ~/chef-solo-example/solo.rb -o 'recipe[ose-wrapper],recipe[cookbook-openshift3]'""")
+
+		# Generate etcd certs
+		shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''',environment_file_after,note='Create environment file')
+		shutit.send('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb')
 # CHANGE THE CRONTAB WITH new recipes
-# CHANGE THE ENV FILE
+# ADD IT TO THE LIST OF NODES: perform the install of etcd and upgrade via chef
+		shutit.logout()
+		shutit.logout()
+
+		shutit.login(command='vagrant ssh node1')
+		shutit.login(command='sudo su - ')
+		shutit.send('yum install -y https://packages.chef.io/stable/el/7/chefdk-1.0.3-1.el7.x86_64.rpm')
+		shutit.send('cd /root/chef-solo-example/cookbooks')
+		shutit.send('chef generate cookbook ose-wrapper')
+		shutit.send_file('/root/chef-solo-example/cookbooks/ose-wrapper/recipes/default.rb',ose_wrapper_default_recipe)
+		shutit.send('mkdir -p /root/chef-solo-example/cookbooks/ose-wrapper/attributes')
+		shutit.send_file('/root/chef-solo-example/cookbooks/ose-wrapper/attributes/default.rb',ose_wrapper_default_attributes)
+		shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''',environment_file_after,note='Create environment file')
+		shutit.send('''chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb''')
+		# Set up default attributes
+		shutit.send_file('/root/chef-solo-example/cookbooks/ose-wrapper/attributes/default.rb',ose_wrapper_default_attributes)
+		# Add this node as one to upgrade
+		shutit.send(r"""sed -i "s/.*etcd_upgrade_servers.*/default['ose-wrapper']['etcd_upgrade_servers'] = [{\"fqdn\": \"node1.vagrant.test\"}]/" /root/chef-solo-example/cookbooks/ose-wrapper/attributes/default.rb""")
+		shutit.send("""chef-solo --environment ocp-cluster-environment -c ~/chef-solo-example/solo.rb -o 'recipe[ose-wrapper],recipe[cookbook-openshift3]'""")
+		shutit.pause_point('''install/upgrade etcd on this node change env, and then add this node to list of scripts to run etcd upgrade: chef-solo --environment ocp-cluster-environment -c ~/chef-solo-example/solo.rb -o 'recipe[cookbook-openshift3],recipe[ose-wrapper]' ''')
 		shutit.logout()
 		shutit.logout()
 		###############################################################################
