@@ -34,4 +34,3 @@ cd shutit-openshift-cluster
 
 For more info, see [here](https://medium.com/@zwischenzugs/a-complete-openshift-cluster-on-vagrant-step-by-step-7465e9816d98#.pv26dz7q1)
 
-
