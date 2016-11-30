@@ -394,11 +394,10 @@ end'''
 		# Generate etcd certs
 		shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''',environment_file_after,note='Create environment file')
 		shutit.send('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb')
-# CHANGE THE CRONTAB WITH new recipes
-# ADD IT TO THE LIST OF NODES: perform the install of etcd and upgrade via chef
 		shutit.logout()
 		shutit.logout()
 
+		# Perform the install of etcd and upgrade via chef
 		shutit.login(command='vagrant ssh node1')
 		shutit.login(command='sudo su - ')
 		shutit.send('yum install -y https://packages.chef.io/stable/el/7/chefdk-1.0.3-1.el7.x86_64.rpm')
@@ -414,9 +413,27 @@ end'''
 		# Add this node as one to upgrade
 		shutit.send(r"""sed -i "s/.*etcd_upgrade_servers.*/default['ose-wrapper']['etcd_upgrade_servers'] = [{\"fqdn\": \"node1.vagrant.test\"}]/" /root/chef-solo-example/cookbooks/ose-wrapper/attributes/default.rb""")
 		shutit.send("""chef-solo --environment ocp-cluster-environment -c ~/chef-solo-example/solo.rb -o 'recipe[ose-wrapper],recipe[cookbook-openshift3]'""")
-		shutit.pause_point('''install/upgrade etcd on this node change env, and then add this node to list of scripts to run etcd upgrade: chef-solo --environment ocp-cluster-environment -c ~/chef-solo-example/solo.rb -o 'recipe[cookbook-openshift3],recipe[ose-wrapper]' ''')
 		shutit.logout()
 		shutit.logout()
+
+		# GO TO OLD ETCD SERVER AND remove ETCD
+		shutit.login(command='vagrant ssh master3')
+		shutit.login(command='sudo su - ')
+		shutit.remove('etcd')
+		shutit.logout()
+		shutit.logout()
+
+		# Go round all servers and re-run chef
+		for machine in machine_names:
+			shutit.login(command='vagrant ssh ' + machine)
+			shutit.login(command='sudo su - ')
+			shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''',environment_file_after,note='Create environment file')
+			shutit.send('''chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb''')
+			shutit.logout()
+			shutit.logout()
+		shutit.pause_point('''CHECK ALL OK: etcdctl --endpoints https://''' + master1_ip + ''':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list''')
+
+
 		###############################################################################
 		# TODO: set up core services
 		#shutit.send('git clone --depth=1 https://github.com/openshift/origin')
