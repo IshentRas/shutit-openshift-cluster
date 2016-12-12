@@ -13,8 +13,8 @@ class shutit_openshift_cluster(ShutItModule):
 		gui = shutit.cfg[self.module_id]['gui']
 		memory = shutit.cfg[self.module_id]['memory']
 		home_dir = os.path.expanduser('~')
-		machine_names = ('master1','master2','master3','etcd1','etcd2','etcd3','node1','node2','openshiftcluster')
-		machines = ('master1.vagrant.test','master2.vagrant.test','master3.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test','node2.vagrant.test','openshift-cluster.vagrant.test')
+		machine_names = ('master1','master2','master3','etcd1','etcd2','etcd3','node1','project1','openshiftcluster')
+		machines = ('master1.vagrant.test','master2.vagrant.test','master3.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test','project1.vagrant.test','openshiftcluster.vagrant.test')
 		module_name = 'shutit_openshift_cluster_' + ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(6))
 		# TODO: needs vagrant 1.8.6+
 		shutit.send('rm -rf ' + home_dir + '/' + module_name + ' && mkdir -p ' + home_dir + '/' + module_name + ' && cd ~/' + module_name)
@@ -56,7 +56,7 @@ Vagrant.configure("2") do |config|
 
   config.vm.define "openshiftcluster" do |openshiftcluster|
     openshiftcluster.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    openshiftcluster.vm.hostname = "openshift-cluster.vagrant.test"
+    openshiftcluster.vm.hostname = "openshiftcluster.vagrant.test"
   end
 
   config.vm.define "etcd1" do |etcd1|
@@ -76,13 +76,13 @@ Vagrant.configure("2") do |config|
     node1.vm.box = ''' + '"' + vagrant_image + '"' + '''
     node1.vm.hostname = "node1.vagrant.test"
   end
-  config.vm.define "node2" do |node2|
-    node2.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    node2.vm.hostname = "node2.vagrant.test"
+  config.vm.define "project1" do |project1|
+    project1.vm.box = ''' + '"' + vagrant_image + '"' + '''
+    project1.vm.hostname = "project1.vagrant.test"
   end
 end''')
-		machine_names = ('master1','master2','etcd1','etcd2','etcd3','node1','node2')
-		machines = ('master1.vagrant.test','master2.vagrant.test','node2.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test')
+		machine_names = ('master1','master2','etcd1','etcd2','etcd3','node1','project1')
+		machines = ('master1.vagrant.test','master2.vagrant.test','project1.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test')
 		if shutit.whoami() != 'root':
 			pw = shutit.get_env_pass()
 		else:
@@ -99,6 +99,7 @@ end''')
 		etcd5_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd5.vagrant.test | awk '{print $2}'""")
 		etcd6_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd6.vagrant.test | awk '{print $2}'""")
 		node1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^node1.vagrant.test | awk '{print $2}'""")
+		shutit.pause_point('machines up ok?')
 		for machine in machine_names:
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
@@ -152,8 +153,8 @@ deployment_type=origin
 # or to one or all of the masters defined in the inventory if no load
 # balancer is present.
 openshift_master_cluster_method=native
-openshift_master_cluster_hostname=openshift-cluster.vagrant.test
-openshift_master_cluster_public_hostname=openshift-cluster.vagrant.test
+openshift_master_cluster_hostname=openshiftcluster.vagrant.test
+openshift_master_cluster_public_hostname=openshiftcluster.vagrant.test
 
 # apply updated node defaults
 openshift_node_kubelet_args={'pods-per-core': ['10'], 'max-pods': ['250'], 'image-gc-high-threshold': ['90'], 'image-gc-low-threshold': ['80']}
@@ -178,13 +179,13 @@ etcd3.vagrant.test
 
 # Specify load balancer host
 [lb]
-openshift-cluster.vagrant.test
+openshiftcluster.vagrant.test
 
 # host group for nodes, includes region info
 [nodes]
 master[1:3].vagrant.test openshift_node_labels="{'region': 'infra', 'zone': 'default'}"
 node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
-node2.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'west'}"''')
+project1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'west'}"''')
 		for machine in machines:
 			# Set up ansible.
 			shutit.multisend('ssh-copy-id root@' + machine,{'ontinue connecting':'yes','assword':'origin'})
@@ -204,9 +205,9 @@ node2.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'west'}"
 		# TODO: https://github.com/openshift/origin/tree/master/examples/data-population
 		shutit.send('cd data-population')
 		shutit.send('ln -s /etc/origin openshift.local.config')
-		shutit.send("""sed -i 's/10.0.2.15/openshift-cluster/g' common.sh""")
+		shutit.send("""sed -i 's/10.0.2.15/openshiftcluster/g' common.sh""")
 		#shutit.send('./populate.sh')
-		shutit.pause_point('Populate without limits or quotas, correct project bug')
+		shutit.pause_point('Create project for node project1 and deploy')
 		shutit.logout()
 		shutit.logout()
 
