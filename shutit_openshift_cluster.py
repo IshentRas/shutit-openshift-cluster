@@ -68,8 +68,8 @@ Vagrant.configure("2") do |config|
     project1.vm.hostname = "project1.vagrant.test"
   end
 end''')
-		machine_names = ('master1','master2','master3','node1','project1')
-		machines = ('master1.vagrant.test','master2.vagrant.test','project1.vagrant.test','master3.vagrant.test','node1.vagrant.test')
+		machine_names = ('master1','master2','master3','node1','project1','openshiftcluster')
+		machines = ('master1.vagrant.test','master2.vagrant.test','project1.vagrant.test','master3.vagrant.test','node1.vagrant.test','openshiftcluster.vagrant.test')
 		if shutit.whoami() != 'root':
 			pw = shutit.get_env_pass()
 		else:
@@ -81,7 +81,10 @@ end''')
 		master3_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^master3.vagrant.test | awk '{print $2}'""")
 		node1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^node1.vagrant.test | awk '{print $2}'""")
 		project1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^project1.vagrant.test | awk '{print $2}'""")
-		shutit.pause_point('machines up ok?')
+		openshiftcluster_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^openshiftcluster.vagrant.test | awk '{print $2}'""")
+		for machine in machine_names:
+			if shutit.send_and_get_output('vagrant status ' + machine + ' | grep ' + machine + ' | grep -w running | wc -l') != '1':
+				shutit.pause_point('vagrant status ' + machine)	
 		for machine in machine_names:
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
@@ -181,7 +184,7 @@ project1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'west
 		shutit.send('oadm manage-node master2.vagrant.test --schedulable')
 		shutit.send('oadm manage-node master3.vagrant.test --schedulable')
 		# List the etcd members
-		shutit.send('etcdctl --endpoints https://' + ,master1_ip + ':2379,https://' + master2_ip + ':2379,https://' + master3_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list')
+		shutit.send('etcdctl --endpoints https://' + master1_ip + ':2379,https://' + master2_ip + ':2379,https://' + master3_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list')
 		shutit.send('git clone --depth=1 https://github.com/openshift/origin')
 		shutit.send('cd origin/examples')
 		# TODO: https://github.com/openshift/origin/tree/master/examples/data-population
