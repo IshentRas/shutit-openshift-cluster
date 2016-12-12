@@ -13,8 +13,8 @@ class shutit_openshift_cluster(ShutItModule):
 		gui = shutit.cfg[self.module_id]['gui']
 		memory = shutit.cfg[self.module_id]['memory']
 		home_dir = os.path.expanduser('~')
-		machine_names = ('master1','master2','master3','etcd1','etcd2','etcd3','node1','project1','openshiftcluster')
-		machines = ('master1.vagrant.test','master2.vagrant.test','master3.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test','project1.vagrant.test','openshiftcluster.vagrant.test')
+		machine_names = ('master1','master2','master3','node1','project1','openshiftcluster')
+		machines = ('master1.vagrant.test','master2.vagrant.test','master3.vagrant.test','node1.vagrant.test','project1.vagrant.test','openshiftcluster.vagrant.test')
 		module_name = 'shutit_openshift_cluster_' + ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(6))
 		# TODO: needs vagrant 1.8.6+
 		shutit.send('rm -rf ' + home_dir + '/' + module_name + ' && mkdir -p ' + home_dir + '/' + module_name + ' && cd ~/' + module_name)
@@ -59,19 +59,6 @@ Vagrant.configure("2") do |config|
     openshiftcluster.vm.hostname = "openshiftcluster.vagrant.test"
   end
 
-  config.vm.define "etcd1" do |etcd1|
-    etcd1.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    etcd1.vm.hostname = "etcd1.vagrant.test"
-  end
-  config.vm.define "etcd2" do |etcd2|
-    etcd2.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    etcd2.vm.hostname = "etcd2.vagrant.test"
-  end
-  config.vm.define "etcd3" do |etcd3|
-    etcd3.vm.box = ''' + '"' + vagrant_image + '"' + '''
-    etcd3.vm.hostname = "etcd3.vagrant.test"
-  end
-
   config.vm.define "node1" do |node1|
     node1.vm.box = ''' + '"' + vagrant_image + '"' + '''
     node1.vm.hostname = "node1.vagrant.test"
@@ -81,8 +68,8 @@ Vagrant.configure("2") do |config|
     project1.vm.hostname = "project1.vagrant.test"
   end
 end''')
-		machine_names = ('master1','master2','etcd1','etcd2','etcd3','node1','project1')
-		machines = ('master1.vagrant.test','master2.vagrant.test','project1.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test')
+		machine_names = ('master1','master2','master3','node1','project1')
+		machines = ('master1.vagrant.test','master2.vagrant.test','project1.vagrant.test','master3.vagrant.test','node1.vagrant.test')
 		if shutit.whoami() != 'root':
 			pw = shutit.get_env_pass()
 		else:
@@ -92,13 +79,8 @@ end''')
 		master1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^master1.vagrant.test | awk '{print $2}'""")
 		master2_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^master2.vagrant.test | awk '{print $2}'""")
 		master3_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^master3.vagrant.test | awk '{print $2}'""")
-		etcd1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd1.vagrant.test | awk '{print $2}'""")
-		etcd2_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd2.vagrant.test | awk '{print $2}'""")
-		etcd3_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd3.vagrant.test | awk '{print $2}'""")
-		etcd4_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd4.vagrant.test | awk '{print $2}'""")
-		etcd5_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd5.vagrant.test | awk '{print $2}'""")
-		etcd6_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd6.vagrant.test | awk '{print $2}'""")
 		node1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^node1.vagrant.test | awk '{print $2}'""")
+		project1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^project1.vagrant.test | awk '{print $2}'""")
 		shutit.pause_point('machines up ok?')
 		for machine in machine_names:
 			shutit.login(command='vagrant ssh ' + machine)
@@ -173,9 +155,9 @@ master3.vagrant.test
 
 # host group for etcd
 [etcd]
-etcd1.vagrant.test
-etcd2.vagrant.test
-etcd3.vagrant.test
+master1.vagrant.test
+master2.vagrant.test
+master3.vagrant.test
 
 # Specify load balancer host
 [lb]
@@ -199,7 +181,7 @@ project1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'west
 		shutit.send('oadm manage-node master2.vagrant.test --schedulable')
 		shutit.send('oadm manage-node master3.vagrant.test --schedulable')
 		# List the etcd members
-		shutit.send('etcdctl --endpoints https://' + etcd1_ip + ':2379,https://' + etcd2_ip + ':2379,https://' + etcd3_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list')
+		shutit.send('etcdctl --endpoints https://' + ,master1_ip + ':2379,https://' + master2_ip + ':2379,https://' + master3_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list')
 		shutit.send('git clone --depth=1 https://github.com/openshift/origin')
 		shutit.send('cd origin/examples')
 		# TODO: https://github.com/openshift/origin/tree/master/examples/data-population
