@@ -177,7 +177,7 @@ project1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'west
 			shutit.multisend('ssh-copy-id root@' + machine + '.vagrant.test',{'ontinue connecting':'yes','assword':'origin'})
 		while True:
 			shutit.multisend('ansible-playbook ~/openshift-ansible/playbooks/byo/config.yml',{'ontinue connecting':'yes'})
-			if shutit.send_and_match_output('oc get nodes','.*node1.vagrant.test     Ready.*'):
+			if shutit.send_and_match_output('oc get nodes','.*node1.vagrant.test.*[^t]Ready.*'):
 				break
 		# Need to set masters as schedulable (why? - ansible seems to un-schedule them)
 		shutit.send('oadm manage-node master1.vagrant.test --schedulable')
