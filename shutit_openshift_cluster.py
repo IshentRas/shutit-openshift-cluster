@@ -8,6 +8,7 @@ class shutit_openshift_cluster(ShutItModule):
 
 
 	def build(self, shutit):
+		shutit.pause_point('deleteme')
 		vagrant_image = shutit.cfg[self.module_id]['vagrant_image']
 		vagrant_provider = shutit.cfg[self.module_id]['vagrant_provider']
 		gui = shutit.cfg[self.module_id]['gui']
