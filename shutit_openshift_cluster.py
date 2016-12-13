@@ -170,7 +170,7 @@ openshiftcluster.vagrant.test
 [nodes]
 master[1:3].vagrant.test openshift_node_labels="{'region': 'infra', 'zone': 'default'}"
 node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
-project1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'west'}"''')
+project1.vagrant.test openshift_node_labels="{'region': 'project1', 'zone': 'west'}"''')
 		for machine in machines:
 			# Set up ansible.
 			shutit.multisend('ssh-copy-id root@' + machine,{'ontinue connecting':'yes','assword':'origin'})
@@ -192,7 +192,13 @@ project1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'west
 		shutit.send('ln -s /etc/origin openshift.local.config')
 		shutit.send("""sed -i 's/10.0.2.15/openshiftcluster/g' common.sh""")
 		#shutit.send('./populate.sh')
-		shutit.pause_point('Create project for node project1 and deploy')
+		shutit.send("""oadm new-project project1 --node-selector='region=project1'""")
+		shutit.send("""oadm new-project normalproject1 --node-selector='region=primary'""")
+		shutit.send("""oc project project1""")
+		shutit.send("""oc deploy mysql""")
+		shutit.send("""oc project normalproject1""")
+		shutit.send("""oc deploy mysql""")
+		shutit.pause_point('Why not deploying?')
 		shutit.logout()
 		shutit.logout()
 
