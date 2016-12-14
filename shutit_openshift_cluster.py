@@ -169,12 +169,14 @@ openshiftcluster.vagrant.test
 # host group for nodes, includes region info
 [nodes]
 master[1:3].vagrant.test openshift_node_labels="{'region': 'infra', 'zone': 'default'}"
-node1.vagrant.test openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
-project1.vagrant.test openshift_node_labels="{'region': 'project1', 'zone': 'west'}"''')
+node1.vagrant.test       openshift_node_labels="{'region': 'primary', 'zone': 'east'}"
+project1.vagrant.test    openshift_node_labels="{'region': 'project1', 'zone': 'west'}"''')
 		for machine in machines:
 			# Set up ansible.
 			shutit.multisend('ssh-copy-id root@' + machine,{'ontinue connecting':'yes','assword':'origin'})
 			shutit.multisend('ssh-copy-id root@' + machine + '.vagrant.test',{'ontinue connecting':'yes','assword':'origin'})
+			# Need to switch off selinux to get docker to work. Don't know why. https://github.com/docker/docker/issues/18967
+			shutit.send('setenforce permissive')
 		while True:
 			shutit.multisend('ansible-playbook ~/openshift-ansible/playbooks/byo/config.yml',{'ontinue connecting':'yes'})
 			if shutit.send_and_match_output('oc get nodes','.*node1.vagrant.test.*[^t]Ready.*'):
@@ -195,9 +197,9 @@ project1.vagrant.test openshift_node_labels="{'region': 'project1', 'zone': 'wes
 		shutit.send("""oadm new-project project1 --node-selector='region=project1'""")
 		shutit.send("""oadm new-project normalproject1 --node-selector='region=primary'""")
 		shutit.send("""oc project project1""")
-		shutit.send("""oc deploy mysql""")
+		shutit.send('curl https://raw.githubusercontent.com/openshift/origin/master/examples/hello-openshift/hello-pod.json | oc create -f -',note='Deploy hello-openshift app')
 		shutit.send("""oc project normalproject1""")
-		shutit.send("""oc deploy mysql""")
+		shutit.send('curl https://raw.githubusercontent.com/openshift/origin/master/examples/hello-openshift/hello-pod.json | oc create -f -',note='Deploy hello-openshift app')
 		shutit.pause_point('Why not deploying?')
 		shutit.logout()
 		shutit.logout()
