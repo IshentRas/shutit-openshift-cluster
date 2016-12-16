@@ -175,12 +175,13 @@ project1.vagrant.test    openshift_node_labels="{'region': 'project1', 'zone': '
 			# Set up ansible.
 			shutit.multisend('ssh-copy-id root@' + machine,{'ontinue connecting':'yes','assword':'origin'})
 			shutit.multisend('ssh-copy-id root@' + machine + '.vagrant.test',{'ontinue connecting':'yes','assword':'origin'})
-			# Need to switch off selinux to get docker to work. Don't know why. https://github.com/docker/docker/issues/18967
-			shutit.send('setenforce permissive')
 		while True:
 			shutit.multisend('ansible-playbook ~/openshift-ansible/playbooks/byo/config.yml',{'ontinue connecting':'yes'})
 			if shutit.send_and_match_output('oc get nodes','.*node1.vagrant.test.*[^t]Ready.*'):
 				break
+		for machine in machines:
+			# Need to switch off selinux to get docker to work. Don't know why. https://github.com/docker/docker/issues/18967
+			shutit.send('setenforce permissive')
 		# Need to set masters as schedulable (why? - ansible seems to un-schedule them)
 		shutit.send('oadm manage-node master1.vagrant.test --schedulable')
 		shutit.send('oadm manage-node master2.vagrant.test --schedulable')
