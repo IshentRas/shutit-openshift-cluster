@@ -62,9 +62,17 @@ Vagrant.configure("2") do |config|
 	  v.customize ["modifyvm", :id, "--cpus", "2"]
 	end
   end
+  config.vm.define "node2" do |node2|
+	node2.vm.box = ''' + '"' + vagrant_image + '"' + '''
+	node2.vm.hostname = "node2.vagrant.test"
+	node2.vm.provider :virtuabox do |v|
+	  v.customize ["modifyvm", :id, "--memory", "512"]
+	  v.customize ["modifyvm", :id, "--cpus", "2"]
+	end
+  end
 end''')
-		machine_names = ('master1','master2','master3','node1')
-		machines = ('master1.vagrant.test','master2.vagrant.test','master3.vagrant.test','node1.vagrant.test')
+		machine_names = ('master1','master2','master3','node1','node2')
+		machines = ('master1.vagrant.test','master2.vagrant.test','master3.vagrant.test','node1.vagrant.test','node2.vagrant.test')
 		if shutit.whoami() != 'root':
 			pw = shutit.get_env_pass()
 		else:
@@ -78,6 +86,7 @@ end''')
 		master2_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^master2.vagrant.test | awk '{print $2}'""")
 		master3_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^master3.vagrant.test | awk '{print $2}'""")
 		node1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^node1.vagrant.test | awk '{print $2}'""")
+		node2_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^node2.vagrant.test | awk '{print $2}'""")
 		#shutit.begin_asciinema_session(title='chef shutit multinode setup')
 		for machine in machine_names:
 			shutit.login(command='vagrant ssh ' + machine)
@@ -176,16 +185,8 @@ solo true''',note='Create solo.rb file')
 		  "ipaddress": "''' + node1_ip + '''"
 		},
 		{
-		  "fqdn": "master1.vagrant.test",
-		  "ipaddress": "''' + master1_ip + '''"
-		},
-		{
-		  "fqdn": "master2.vagrant.test",
-		  "ipaddress": "''' + master2_ip + '''"
-		},
-		{
-		  "fqdn": "master3.vagrant.test",
-		  "ipaddress": "''' + master3_ip + '''"
+		  "fqdn": "node2.vagrant.test",
+		  "ipaddress": "''' + node2_ip + '''"
 		}
 	  ]
 	}
@@ -204,22 +205,23 @@ solo true''',note='Create solo.rb file')
 		shutit.login(command='vagrant ssh master1')
 		shutit.login(command='sudo su - ')
 		shutit.send_until('oc get all','.*kubernetes.*',cadence=60,note='Wait until oc get all returns OK')
-		shutit.send_until('oc get nodes','master1.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
-		shutit.send_until('oc get nodes','master2.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
-		shutit.send_until('oc get nodes','master3.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
+		#shutit.send_until('oc get nodes','master1.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
+		#shutit.send_until('oc get nodes','master2.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
+		#shutit.send_until('oc get nodes','master3.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
 		shutit.send_until('oc get nodes','node1.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
+		shutit.send_until('oc get nodes','node2.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
 		#shutit.end_asciinema_session()
 		shutit.pause_point('')
 		shutit.logout()
 		shutit.logout()
 		###############################################################################
 		# TODO: set up core services
-		#shutit.send('git clone --depth=1 https://github.com/openshift/origin')
-		#shutit.send('cd origin/examples')
+		shutit.send('git clone --depth=1 https://github.com/openshift/origin')
+		shutit.send('cd origin/examples')
 		## TODO: https://github.com/openshift/origin/tree/master/examples/data-population
-		#shutit.send('cd data-population')
-		#shutit.send('ln -s /etc/origin openshift.local.config')
-		#shutit.send('./populate.sh')
+		shutit.send('cd data-population')
+		shutit.send('ln -s /etc/origin openshift.local.config')
+		shutit.send('./populate.sh')
 		###############################################################################
 
 		return True
