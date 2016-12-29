@@ -526,12 +526,25 @@ solo true''')
 		shutit.logout()
 		###############################################################################
 
+		################################################################################
+		# Update the chef config to reflect the new reality, and then run chef everywhere
+		################################################################################
+		for machine in machine_names:
+			shutit.login(command='vagrant ssh ' + machine)
+			shutit.login(command='sudo su - ')
+			shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''',new_chef_file_dropped_master1)
+			shutit.send_until('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb','.*Report handlers complete.*')
+			shutit.logout()
+			shutit.logout()
+		################################################################################
+
+
+
+
 		###############################################################################
 		# go to etcd1 and set up etcd
 		shutit.login(command='vagrant ssh etcd1')
 		shutit.login(command='sudo su - ')
-		shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''',new_chef_file_dropped_master1)
-		shutit.send_until('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb','.*Report handlers complete.*')
 		## Shut down etcd
 		shutit.send('systemctl stop etcd')
 		# Replace new with existing
@@ -638,14 +651,24 @@ solo true''')
 		shutit.logout()
 		###############################################################################
 
+		################################################################################
+		# Update the chef config to reflect the new reality, and then run chef everywhere
+		################################################################################
+		for machine in machine_names:
+			shutit.login(command='vagrant ssh ' + machine)
+			shutit.login(command='sudo su - ')
+			shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''',new_chef_file_dropped_master2)
+			shutit.send_until('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb','.*Report handlers complete.*')
+			shutit.logout()
+			shutit.logout()
+		################################################################################
+
+
 
 		###############################################################################
 		# go to etcd2 and set up etcd
 		shutit.login(command='vagrant ssh etcd2')
 		shutit.login(command='sudo su - ')
-		shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''',new_chef_file_dropped_master2)
-		# Can we do this with chef?
-		shutit.send_until('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb','.*Report handlers complete.*')
 		# Shut down etcd
 		shutit.send('systemctl stop etcd')
 		# Replace new with existing
@@ -753,13 +776,24 @@ solo true''')
 		shutit.logout()
 		###############################################################################
 
+		################################################################################
+		# Update the chef config to reflect the new reality, and then run chef everywhere
+		################################################################################
+		for machine in machine_names:
+			shutit.login(command='vagrant ssh ' + machine)
+			shutit.login(command='sudo su - ')
+			shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''',new_chef_file_dropped_master3)
+			shutit.send_until('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb','.*Report handlers complete.*')
+			shutit.logout()
+			shutit.logout()
+		################################################################################
+
+
+
 		###############################################################################
 		# go to etcd3 and set up etcd
 		shutit.login(command='vagrant ssh etcd3')
 		shutit.login(command='sudo su - ')
-		shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''',final_chef_config)
-		# Can we do this with chef?
-		shutit.send_until('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb','.*Report handlers complete.*')
 		# Shut down etcd
 		shutit.send('systemctl stop etcd')
 		# Replace new with existing
@@ -771,17 +805,6 @@ solo true''')
 		shutit.logout()
 		shutit.logout()
 		################################################################################
-
-		################################################################################
-		# Update the chef config to reflect the new reality, and then run chef everywhere
-		################################################################################
-		for machine in machine_names:
-			shutit.login(command='vagrant ssh ' + machine)
-			shutit.login(command='sudo su - ')
-			shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''',final_chef_config)
-			shutit.send('echo "*/5 * * * * chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1" | crontab')
-			shutit.logout()
-			shutit.logout()
 
 		shutit.pause_point('etcd should be migrated and all ok. Wait for chef to re-run everywhere')
 
