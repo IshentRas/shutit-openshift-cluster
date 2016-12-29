@@ -782,7 +782,7 @@ solo true''')
 		for machine in machine_names:
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
-			shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''',new_chef_file_dropped_master3)
+			shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''',final_chef_config)
 			shutit.send_until('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb','.*Report handlers complete.*')
 			shutit.logout()
 			shutit.logout()
