@@ -86,9 +86,17 @@ Vagrant.configure("2") do |config|
 	  v.customize ["modifyvm", :id, "--cpus", "2"]
 	end
   end
+  config.vm.define "node2" do |node2|
+	node2.vm.box = ''' + '"' + vagrant_image + '"' + '''
+	node2.vm.hostname = "node2.vagrant.test"
+	node2.vm.provider :virtualbox do |v|
+	  v.customize ["modifyvm", :id, "--memory", "512"]
+	  v.customize ["modifyvm", :id, "--cpus", "2"]
+	end
+  end
 end''')
-		machine_names = ('master1','master2','master3','etcd1','etcd2','etcd3','node1')
-		machines = ('master1.vagrant.test','master2.vagrant.test','master3.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test')
+		machine_names = ('master1','master2','master3','etcd1','etcd2','etcd3','node1','node2',)
+		machines = ('master1.vagrant.test','master2.vagrant.test','master3.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test','node2.vagrant.test',)
 		pw = shutit.get_env_pass()
 		for machine in machine_names:
 			shutit.multisend('vagrant up --provider ' + shutit.cfg['shutit-library.virtualization.virtualization.virtualization']['virt_method'] + ' ' + machine,{'assword for':pw},timeout=99999)
@@ -102,6 +110,31 @@ end''')
 		etcd2_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd2.vagrant.test | awk '{print $2}'""")
 		etcd3_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd3.vagrant.test | awk '{print $2}'""")
 		node1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^node1.vagrant.test | awk '{print $2}'""")
+		node2_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^node2.vagrant.test | awk '{print $2}'""")
+
+
+		# Use IPTables to block node1 from master2,3, node2, and etcd1,2,3; and node2 from master1, and node1
+		# TODO: does this rule survive openshift build?
+		shutit.login(command='vagrant ssh node1')
+		shutit.login(command='sudo su - ')
+		shutit.send('''iptables -A OUTPUT -s ''' + master2_ip + ''' -j DROP''')
+		shutit.send('''iptables -A OUTPUT -s ''' + master3_ip + ''' -j DROP''')
+		shutit.send('''iptables -A OUTPUT -s ''' + node2_ip + ''' -j DROP''')
+		shutit.send('''iptables -A OUTPUT -s ''' + etcd1_ip + ''' -j DROP''')
+		shutit.send('''iptables -A OUTPUT -s ''' + etcd2_ip + ''' -j DROP''')
+		shutit.send('''iptables -A OUTPUT -s ''' + etcd3_ip + ''' -j DROP''')
+		shutit.send('service iptables save')
+		shutit.logout()
+		shutit.logout()
+
+		shutit.login(command='vagrant ssh node2')
+		shutit.login(command='sudo su - ')
+		shutit.send('''iptables -A OUTPUT -s ''' + master1_ip + ''' -j DROP''')
+		shutit.send('''iptables -A OUTPUT -s ''' + node1_ip + ''' -j DROP''')
+		shutit.send('service iptables save')
+		shutit.logout()
+		shutit.logout()
+		
 		for machine in machine_names:
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
@@ -202,6 +235,10 @@ solo true''')
 		{
 		  "fqdn": "node1.vagrant.test",
 		  "ipaddress": "''' + node1_ip + '''"
+		},
+		{
+		  "fqdn": "node2.vagrant.test",
+		  "ipaddress": "''' + node2_ip + '''"
 		},
 		{
 		  "fqdn": "master1.vagrant.test",
@@ -333,6 +370,10 @@ solo true''')
 		  "ipaddress": "''' + node1_ip + '''"
 		},
 		{
+		  "fqdn": "node2.vagrant.test",
+		  "ipaddress": "''' + node2_ip + '''"
+		},
+		{
 		  "fqdn": "master1.vagrant.test",
 		  "ipaddress": "''' + master1_ip + '''"
 		},
@@ -409,6 +450,10 @@ solo true''')
 		{
 		  "fqdn": "node1.vagrant.test",
 		  "ipaddress": "''' + node1_ip + '''"
+		},
+		{
+		  "fqdn": "node2.vagrant.test",
+		  "ipaddress": "''' + node2_ip + '''"
 		},
 		{
 		  "fqdn": "master1.vagrant.test",
@@ -497,6 +542,10 @@ solo true''')
 		{
 		  "fqdn": "node1.vagrant.test",
 		  "ipaddress": "''' + node1_ip + '''"
+		},
+		{
+		  "fqdn": "node2.vagrant.test",
+		  "ipaddress": "''' + node2_ip + '''"
 		},
 		{
 		  "fqdn": "master1.vagrant.test",
@@ -625,6 +674,10 @@ solo true''')
 		  "ipaddress": "''' + node1_ip + '''"
 		},
 		{
+		  "fqdn": "node2.vagrant.test",
+		  "ipaddress": "''' + node2_ip + '''"
+		},
+		{
 		  "fqdn": "master1.vagrant.test",
 		  "ipaddress": "''' + master1_ip + '''"
 		},
@@ -748,6 +801,10 @@ solo true''')
 		{
 		  "fqdn": "node1.vagrant.test",
 		  "ipaddress": "''' + node1_ip + '''"
+		},
+		{
+		  "fqdn": "node2.vagrant.test",
+		  "ipaddress": "''' + node2_ip + '''"
 		},
 		{
 		  "fqdn": "master1.vagrant.test",
