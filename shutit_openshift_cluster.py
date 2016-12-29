@@ -14,7 +14,6 @@ class shutit_openshift_cluster(ShutItModule):
 		memory = shutit.cfg[self.module_id]['memory']
 		home_dir = os.path.expanduser('~')
 		module_name = 'shutit_openshift_cluster_' + ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(6))
-		# TODO: needs vagrant 1.8.6+
 		shutit.send('rm -rf ' + home_dir + '/' + module_name + ' && mkdir -p ' + home_dir + '/' + module_name + ' && cd ~/' + module_name)
 		shutit.send('vagrant plugin install landrush')
 		shutit.send('vagrant init ' + vagrant_image)
@@ -259,33 +258,6 @@ solo true''')
 			shutit.send('cp /etc/etcd/etcd.conf /etc/etcd/etcd.conf.bak')
 			shutit.logout()
 			shutit.logout()
-		# Switch off chef crons
-		for machine in machine_names:
-			shutit.login(command='vagrant ssh ' + machine)
-			shutit.login(command='sudo su - ')
-			if machine not in ('etcd1','etcd2','etcd3'):
-				shutit.send('echo "#*/5 * * * * chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1" | crontab')
-			shutit.logout()
-			shutit.logout()
-		# https://docs.openshift.com/enterprise/3.2/install_config/downgrade.html
-		for machine in ('master1','master2','master3'):
-			shutit.login(command='vagrant ssh ' + machine)
-			shutit.login(command='sudo su - ')
-			#shutit.send('systemctl stop atomic-openshift-master-api')
-			#shutit.send('systemctl stop atomic-openshift-master-controllers')
-			#shutit.send('systemctl stop atomic-openshift-node')
-			shutit.send_until('systemctl stop origin-master-api','')
-			shutit.send_until('systemctl stop origin-master-controllers','')
-			shutit.logout()
-			shutit.logout()
-		for machine in ('node1',):
-			shutit.login(command='vagrant ssh ' + machine)
-			shutit.login(command='sudo su - ')
-			#shutit.send('systemctl stop atomic-openshift-node')
-			shutit.send_until('systemctl stop origin-node','')
-			shutit.logout()
-			shutit.logout()
-		###############################################################################
 		
 		###############################################################################
 		# GET CERTS
@@ -459,37 +431,15 @@ solo true''')
 		shutit.logout()
 		shutit.logout()
 
-		# Shut down openshift again, as chef runs will have started it up.
-		for machine in ('master1','master2','master3'):
-			shutit.login(command='vagrant ssh ' + machine)
-			shutit.login(command='sudo su - ')
-			#shutit.send('systemctl stop atomic-openshift-master-api')
-			#shutit.send('systemctl stop atomic-openshift-master-controllers')
-			#shutit.send('systemctl stop atomic-openshift-node')
-			shutit.send_until('systemctl stop origin-master-api','')
-			shutit.send_until('systemctl stop origin-master-controllers','')
-			shutit.send_until('systemctl stop origin-node','')
-			shutit.logout()
-			shutit.logout()
-		###############################################################################
-
 		###############################################################################
 		# ETCD1
 		###############################################################################
-		# Add etcd1 to cluster and drop master1 - TODO: do this in chef?
+		# Add etcd1 to cluster and drop master1
 		shutit.login(command='vagrant ssh master1')
 		shutit.login(command='sudo su - ')
 		shutit.send('etcdctl --endpoints https://' + master3_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add etcd1.vagrant.test https://' + etcd1_ip + ':2380',note='Add node to cluster')
-		shutit.send("""etcdctl https://""" + master3_ip + """:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member remove $(etcdctl --endpoints https://""" + master3_ip + """:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list | grep master1.vagrant.test | awk -F: '{print $1}')""",note='Drop node from cluster')
-		shutit.logout()
-		shutit.logout()
-		###############################################################################
-
-		###############################################################################
-		# go to etcd1 and set up etcd
-		shutit.login(command='vagrant ssh etcd1')
-		shutit.login(command='sudo su - ')
-		shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''','''{
+		shutit.send("""etcdctl --endpoints https://""" + master3_ip + """:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member remove $(etcdctl --endpoints https://""" + master3_ip + """:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list | grep master1.vagrant.test | awk -F: '{print $1}')""",note='Drop node from cluster')
+		new_chef_file_dropped_master1 = '''{
   "name": "ocp-cluster-environment",
   "description": "",
   "cookbook_versions": {
@@ -563,10 +513,26 @@ solo true''')
 	  ]
 	}
   }
-}''')
-		# Can we do this with chef?
+}'''
+		shutit.logout()
+		shutit.logout()
+
+		# Sort out etcd on master1
+		shutit.login(command='vagrant ssh master1')
+		shutit.login(command='sudo su - ')
+		shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''',new_chef_file_dropped_master1)
+		shutit.send('systemctl stop etcd')
+		shutit.logout()
+		shutit.logout()
+		###############################################################################
+
+		###############################################################################
+		# go to etcd1 and set up etcd
+		shutit.login(command='vagrant ssh etcd1')
+		shutit.login(command='sudo su - ')
+		shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''',new_chef_file_dropped_master1)
 		shutit.send_until('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb','.*Report handlers complete.*')
-		# Shut down etcd
+		## Shut down etcd
 		shutit.send('systemctl stop etcd')
 		# Replace new with existing
 		shutit.send("""sed -i 's/ETCD_INITIAL_CLUSTER_STATE=.*/ETCD_INITIAL_CLUSTER_STATE=existing/' /etc/etcd/etcd.conf""")
@@ -581,21 +547,12 @@ solo true''')
 		###############################################################################
 		# ETCD2		
 		###############################################################################
-		# Add etcd2 to cluster and drop master2 - TODO: do this in chef?
+		# Add etcd2 to cluster and drop master2
 		shutit.login(command='vagrant ssh master1')
 		shutit.login(command='sudo su - ')
-		shutit.send('etcdctl --endpoints https://' + master3_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add etcd1.vagrant.test https://' + etcd2_ip + ':2380',note='Add node to cluster')
+		shutit.send('etcdctl --endpoints https://' + master3_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add etcd2.vagrant.test https://' + etcd2_ip + ':2380',note='Add node to cluster')
 		shutit.send("""etcdctl --endpoints https://""" + master3_ip + """:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member remove $(etcdctl --endpoints https://""" + master3_ip + """:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list | grep master2.vagrant.test | awk -F: '{print $1}')""",note='Drop node from cluster')
-		shutit.logout()
-		shutit.logout()
-		###############################################################################
-
-
-		###############################################################################
-		# go to etcd2 and set up etcd
-		shutit.login(command='vagrant ssh etcd2')
-		shutit.login(command='sudo su - ')
-		shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''','''{
+		new_chef_file_dropped_master2 = '''{
   "name": "ocp-cluster-environment",
   "description": "",
   "cookbook_versions": {
@@ -669,7 +626,24 @@ solo true''')
 	  ]
 	}
   }
-}''')
+}'''
+		shutit.logout()
+		shutit.logout()
+		# Sort out etcd on master2
+		shutit.login(command='vagrant ssh master2')
+		shutit.login(command='sudo su - ')
+		shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''',new_chef_file_dropped_master2)
+		shutit.send('systemctl stop etcd')
+		shutit.logout()
+		shutit.logout()
+		###############################################################################
+
+
+		###############################################################################
+		# go to etcd2 and set up etcd
+		shutit.login(command='vagrant ssh etcd2')
+		shutit.login(command='sudo su - ')
+		shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''',new_chef_file_dropped_master2)
 		# Can we do this with chef?
 		shutit.send_until('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb','.*Report handlers complete.*')
 		# Shut down etcd
@@ -688,19 +662,11 @@ solo true''')
 		###############################################################################
 		# ETCD3
 		###############################################################################
-		# Add etcd3 to cluster and drop master3 - TODO: do this in chef?
+		# Add etcd3 to cluster and drop master3
 		shutit.login(command='vagrant ssh master1')
 		shutit.login(command='sudo su - ')
-		shutit.send('etcdctl --endpoints https://' + master3_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add etcd1.vagrant.test https://' + etcd3_ip + ':2380',note='Add node to cluster')
+		shutit.send('etcdctl --endpoints https://' + master3_ip + ':2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member add etcd3.vagrant.test https://' + etcd3_ip + ':2380',note='Add node to cluster')
 		shutit.send("""etcdctl --endpoints https://""" + master3_ip + """:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member remove $(etcdctl --endpoints https://""" + master3_ip + """:2379 --ca-file /etc/origin/master/master.etcd-ca.crt --cert-file /etc/origin/master/master.etcd-client.crt --key-file /etc/origin/master/master.etcd-client.key member list | grep master3.vagrant.test | awk -F: '{print $1}')""",note='Drop node from cluster')
-		shutit.logout()
-		shutit.logout()
-		###############################################################################
-
-		###############################################################################
-		# go to etcd3 and set up etcd
-		shutit.login(command='vagrant ssh etcd3')
-		shutit.login(command='sudo su - ')
 		final_chef_config = '''{
   "name": "ocp-cluster-environment",
   "description": "",
@@ -776,6 +742,21 @@ solo true''')
 	}
   }
 }'''
+		shutit.logout()
+		shutit.logout()
+		# Sort out etcd on master3
+		shutit.login(command='vagrant ssh master3')
+		shutit.login(command='sudo su - ')
+		shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''',final_chef_config)
+		shutit.send('systemctl stop etcd')
+		shutit.logout()
+		shutit.logout()
+		###############################################################################
+
+		###############################################################################
+		# go to etcd3 and set up etcd
+		shutit.login(command='vagrant ssh etcd3')
+		shutit.login(command='sudo su - ')
 		shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''',final_chef_config)
 		# Can we do this with chef?
 		shutit.send_until('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb','.*Report handlers complete.*')
