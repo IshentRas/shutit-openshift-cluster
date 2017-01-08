@@ -247,7 +247,7 @@ solo true''')
 		###############################################################################
 
 		###############################################################################
-		# GET BACKUP, STOP SERVICE
+		# GET BACKUP
 		###############################################################################
 		# https://docs.openshift.com/enterprise/3.2/install_config/upgrading/manual_upgrades.html#preparing-for-a-manual-upgrade
 		for machine in ('master1','master2','master3'):
