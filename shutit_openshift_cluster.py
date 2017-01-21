@@ -96,7 +96,7 @@ end''')
 			shutit.send('rpm -i https://packages.chef.io/stable/el/7/chef-12.16.42-1.el7.x86_64.rpm',note='install chef')
 			shutit.send('mkdir -p /root/chef-solo-example /root/chef-solo-example/cookbooks /root/chef-solo-example/environments /root/chef-solo-example/logs',note='Create chef folders')
 			shutit.send('cd /root/chef-solo-example/cookbooks')
-			shutit.send('git clone https://github.com/IshentRas/cookbook-openshift3',note='Clone chef repo')
+			shutit.send('git clone -b dns-search https://github.com/IshentRas/cookbook-openshift3',note='Clone chef repo')
 			# Filthy hack to 'override' the node['ipaddress'] value
 			ip_addr = shutit.send_and_get_output("""ip -4 addr show dev eth1 | grep inet | awk '{print $2}' | awk -F/ '{print $1}'""")
 			shutit.send('''sed -i 's/#{node..ipaddress..}/''' + ip_addr + '''/g' /root/chef-solo-example/cookbooks/cookbook-openshift3/attributes/default.rb''')
