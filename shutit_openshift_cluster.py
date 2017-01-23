@@ -1,6 +1,7 @@
 import random
 import string
 import os
+import inspect
 
 from shutit_module import ShutItModule
 
