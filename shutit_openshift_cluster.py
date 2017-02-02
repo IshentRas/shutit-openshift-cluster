@@ -125,7 +125,7 @@ end''')
 			shutit.send('mkdir -p /root/chef-solo-example/environments')
 			shutit.send('mkdir -p /root/chef-solo-example/logs')
 			shutit.send('cd /root/chef-solo-example/cookbooks')
-			shutit.send('git clone https://github.com/IshentRas/cookbook-openshift3')
+			shutit.send('git clone -b cert_retrieval_bugfix https://github.com/IshentRas/cookbook-openshift3')
 			# Filthy hack to 'override' the node['ipaddress'] value
 			ip_addr = shutit.send_and_get_output("""ip -4 addr show dev eth1 | grep inet | awk '{print $2}' | awk -F/ '{print $1}'""")
 			shutit.send('''sed -i 's/#{node..ipaddress..}/''' + ip_addr + '''/g' /root/chef-solo-example/cookbooks/cookbook-openshift3/attributes/default.rb''')
@@ -239,7 +239,7 @@ solo true''')
 		#shutit.send('./populate.sh')
 		###############################################################################
 
-		shutit.pause_point('all ok?')
+		shutit.pause_point('all ok?'
 
 		return True
 
