@@ -81,7 +81,7 @@ Vagrant.configure("2") do |config|
   end
   config.vm.define "node2" do |node2|
 	node2.vm.box = ''' + '"' + vagrant_image + '"' + '''
-	node2.vm.hostname = "node2.vagrant.test"
+	node2.vm.hostname = "node1.vagrant.test"
 	node2.vm.provider :virtualbox do |v|
 	  v.customize ["modifyvm", :id, "--memory", "512"]
 	  v.customize ["modifyvm", :id, "--cpus", "2"]
@@ -103,32 +103,36 @@ end''')
 		etcd2_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd2.vagrant.test | awk '{print $2}'""")
 		etcd3_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd3.vagrant.test | awk '{print $2}'""")
 		node1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^node1.vagrant.test | awk '{print $2}'""")
-		shutit.begin_asciinema_session(title='chef shutit multinode setup')
 		for machine in machine_names:
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
-			shutit.send('''sed -i 's/enabled=1/enabled=0/' /etc/yum/pluginconf.d/fastestmirror.conf''',note='Switch off fastest mirror - it gives me nothing but grief (looooong waits')
+			# Switch off fastest mirror - it gives me nothing but grief (looooong waits)
+			shutit.send('''sed -i 's/enabled=1/enabled=0/' /etc/yum/pluginconf.d/fastestmirror.conf''')
+			# See: https://access.redhat.com/articles/1320623
 			shutit.send('rm -fr /var/cache/yum/*')
 			shutit.send('yum clean all')
 			shutit.install('xterm')
 			shutit.install('net-tools')
 			shutit.install('git')
 			# Allow logins via ssh between machines
-			shutit.send('''sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config''',note='Allow logins between machines')
-			shutit.send('echo root:origin | /usr/sbin/chpasswd',note='set root password')
-			shutit.send('systemctl restart sshd',note='restart sshd')
+			shutit.send('''sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config''')
+			shutit.send('echo root:origin | /usr/sbin/chpasswd')
+			shutit.send('systemctl restart sshd')
 			shutit.install('epel-release')
-			shutit.send('rpm -i https://packages.chef.io/stable/el/7/chef-12.16.42-1.el7.x86_64.rpm',note='install chef')
-			shutit.send('mkdir -p /root/chef-solo-example /root/chef-solo-example/cookbooks /root/chef-solo-example/environments /root/chef-solo-example/logs',note='Create chef folders')
+			shutit.send('rpm -i https://packages.chef.io/stable/el/7/chef-12.16.42-1.el7.x86_64.rpm')
+			shutit.send('mkdir -p /root/chef-solo-example')
+			shutit.send('mkdir -p /root/chef-solo-example/cookbooks')
+			shutit.send('mkdir -p /root/chef-solo-example/environments')
+			shutit.send('mkdir -p /root/chef-solo-example/logs')
 			shutit.send('cd /root/chef-solo-example/cookbooks')
-			shutit.send('git clone https://github.com/IshentRas/cookbook-openshift3',note='Clone chef repo')
+			shutit.send('git clone https://github.com/IshentRas/cookbook-openshift3')
 			# Filthy hack to 'override' the node['ipaddress'] value
 			ip_addr = shutit.send_and_get_output("""ip -4 addr show dev eth1 | grep inet | awk '{print $2}' | awk -F/ '{print $1}'""")
 			shutit.send('''sed -i 's/#{node..ipaddress..}/''' + ip_addr + '''/g' /root/chef-solo-example/cookbooks/cookbook-openshift3/attributes/default.rb''')
 			shutit.send("""sed -i "s/node..ipaddress../'""" + ip_addr + """'/g" /root/chef-solo-example/cookbooks/cookbook-openshift3/attributes/default.rb""")
 
-			shutit.send('curl -L https://supermarket.chef.io/cookbooks/iptables/download | tar -zxvf -',note='Get cookbook dependencies')
-			shutit.send('curl -L https://supermarket.chef.io/cookbooks/yum/download | tar -zxvf -')
+			shutit.send('curl -L https://supermarket.chef.io/cookbooks/iptables/download | tar -zxvf -')
+			shutit.send('curl -L https://supermarket.chef.io/cookbooks/yum/versions/3.9.0/download | tar -zxvf -')
 			shutit.send('curl -L https://supermarket.chef.io/cookbooks/selinux_policy/download | tar -zxvf -')
 			shutit.send('curl -L https://supermarket.chef.io/cookbooks/compat_resource/download | tar -zxvf -')
 			shutit.send_file('/root/chef-solo-example/solo.rb','''cookbook_path [
@@ -139,7 +143,7 @@ environment_path '/root/chef-solo-example/environments'
 file_backup_path '/root/chef-solo-example/backup'
 file_cache_path '/root/chef-solo-example/cache'
 log_location STDOUT
-solo true''',note='Create solo.rb file')
+solo true''')
 
 			shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''','''{
   "name": "ocp-cluster-environment",
@@ -207,30 +211,26 @@ solo true''',note='Create solo.rb file')
 	  ]
 	}
   }
-}''',note='Create environment file')
+}''')
 			shutit.logout()
 			shutit.logout()
 
 		for machine in machine_names:
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
-			shutit.send('echo "*/5 * * * * chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1" | crontab',note='set up crontab on ' + machine)
+			if machine not in ('etcd1','etcd2','etcd3'):
+				shutit.send('echo "*/5 * * * * chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1" | crontab')
 			shutit.logout()
 			shutit.logout()
 		
 		shutit.login(command='vagrant ssh master1')
 		shutit.login(command='sudo su - ')
-		shutit.send_until('oc get all','.*kubernetes.*',cadence=60,note='Wait until oc get all returns OK')
-		shutit.end_asciinema_session()
+		shutit.send_until('oc get all','.*kubernetes.*',cadence=60)
 		shutit.logout()
 		shutit.logout()
 
-		shutit.send('oc label node master1.vagrant.test region=registry')
-		shutit.send("""oadm registry --config=/etc/origin/master/admin.kubeconfig --service-account=registry --images='registry.access.redhat.com/openshift3/ose-${component}:${version}' --selector=region=registry""",note='Create an ephemeral registry.',check_exit=False)
-		shutit.send("""oc create route passthrough --service registry-console --port registry-console -n default',note='Create route for the registry console') oc new-app -n default --template=registry-console -p OPENSHIFT_OAUTH_PROVIDER_URL="https://master1.vagrant.test:8443",REGISTRY_HOST=$(oc get route docker-registry -n default --template='{{ .spec.host }}'),COCKPIT_KUBE_URL=$(oc get route registry-console -n default --template='https://{{ .spec.host }}')""")
-		shutit.pause_point('all ok?')
-		###############################################################################
 		# TODO: set up core services
+
 		#shutit.send('git clone --depth=1 https://github.com/openshift/origin')
 		#shutit.send('cd origin/examples')
 		## TODO: https://github.com/openshift/origin/tree/master/examples/data-population
@@ -238,6 +238,8 @@ solo true''',note='Create solo.rb file')
 		#shutit.send('ln -s /etc/origin openshift.local.config')
 		#shutit.send('./populate.sh')
 		###############################################################################
+
+		shutit.pause_point('all ok?')
 
 		return True
 
