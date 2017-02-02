@@ -221,17 +221,16 @@ etcd_upgrade_servers = node['ose-wrapper']['etcd_upgrade_servers']
 shutdown_servers = node['ose-wrapper']['shutdown_servers']
 
 # - etcd_migration_endpoint_ip:            "https://172.28.128.3"
-# - etcd_migration_new_node_ip:            "https://172.28.128.6"
-# - etcd_migration_new_node_name:          "https://node1.vagrant.test"
+# - etcd_migration_new_node:               "https://node1.vagrant.test"
 # - etcd_migration_drop_node:              "https://master3.vagrant.test"
-if master_servers.any? && master_servers.first['fqdn'] == node['fqdn'] && node['ose-wrapper']['etcd_migration_endpoint_ip'] && node['ose-wrapper']['etcd_migration_new_node_ip'] && node['ose-wrapper']['etcd_migration_new_node_name'] && node['ose-wrapper']['etcd_migration_drop_node']
+if master_servers.any? && master_servers.first['fqdn'] == node['fqdn'] && node['ose-wrapper']['etcd_migration_endpoint_ip'] && node['ose-wrapper']['etcd_migration_new_node'] && node['ose-wrapper']['etcd_migration_drop_node']
   # Switched off by default - step 6
   execute 'Add node to etcd cluster' do
     command "etcdctl --endpoints #{node['ose-wrapper']['etcd_migration_endpoint_ip']}:#{node['cookbook-openshift3']['etcd_client_port']} \
                      --ca-file   #{node['cookbook-openshift3']['openshift_master_config_dir']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}ca.crt \
                      --cert-file #{node['cookbook-openshift3']['openshift_master_config_dir']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}client.crt \
                      --key-file  #{node['cookbook-openshift3']['openshift_master_config_dir']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}client.key \
-                     member add  #{node['ose-wrapper']['etcd_migration_new_node_name']} #{node['ose-wrapper']['etcd_migration_new_node_ip']}:#{node['cookbook-openshift3']['etcd_peer_port']}"
+                     member add  #{node['ose-wrapper']['etcd_migration_new_node']}:#{node['cookbook-openshift3']['etcd_peer_port']}"
     only_if "[[ $(etcdctl --endpoints #{node['ose-wrapper']['etcd_migration_endpoint_ip']}:#{node['cookbook-openshift3']['etcd_client_port']} \
                           --ca-file   #{node['cookbook-openshift3']['openshift_master_config_dir']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}ca.crt \
                           --cert-file #{node['cookbook-openshift3']['openshift_master_config_dir']}/#{node['cookbook-openshift3']['master_etcd_cert_prefix']}client.crt \
@@ -290,12 +289,10 @@ end''')
 		shutit.send_file('/root/chef-solo-example/cookbooks/ose-wrapper/attributes/default.rb','''default['ose-wrapper']['etcd_upgrade_servers'] = []
 default['ose-wrapper']['shutdown_servers'] = []
 default['ose-wrapper']['etcd_migration_endpoint_ip'] = nil
-default['ose-wrapper']['etcd_migration_new_node_ip'] = nil
-default['ose-wrapper']['etcd_migration_new_node_name'] = nil
+default['ose-wrapper']['etcd_migration_new_node'] = nil
 default['ose-wrapper']['etcd_migration_drop_node'] = nil
 #default['ose-wrapper']['etcd_migration_endpoint_ip'] = 'https://172.28.128.3'
-default['ose-wrapper']['etcd_migration_new_node_ip'] = "node1's ip?"
-default['ose-wrapper']['etcd_migration_new_node_name'] = "node1.vagrant.test"
+#default['ose-wrapper']['etcd_migration_new_node'] = "https://node1.vagrant.test"
 #default['ose-wrapper']['etcd_migration_drop_node'] = "https://master3.vagrant.test"
 ''')
 
