@@ -45,11 +45,28 @@ Vagrant.configure("2") do |config|
 	  v.customize ["modifyvm", :id, "--cpus", "2"]
 	end
   end
-  config.vm.define "master3" do |master3|
-	master3.vm.box = ''' + '"' + vagrant_image + '"' + '''
-	master3.vm.hostname = "master3.vagrant.test"
-	master3.vm.provider :virtualbox do |v|
-	  v.customize ["modifyvm", :id, "--memory", "2048"]
+
+  config.vm.define "etcd1" do |etcd1|
+	etcd1.vm.box = ''' + '"' + vagrant_image + '"' + '''
+	etcd1.vm.hostname = "etcd1.vagrant.test"
+	etcd1.vm.provider :virtualbox do |v|
+	  v.customize ["modifyvm", :id, "--memory", "512"]
+	  v.customize ["modifyvm", :id, "--cpus", "2"]
+	end
+  end
+  config.vm.define "etcd2" do |etcd2|
+	etcd2.vm.box = ''' + '"' + vagrant_image + '"' + '''
+	etcd2.vm.hostname = "etcd2.vagrant.test"
+	etcd2.vm.provider :virtualbox do |v|
+	  v.customize ["modifyvm", :id, "--memory", "512"]
+	  v.customize ["modifyvm", :id, "--cpus", "2"]
+	end
+  end
+  config.vm.define "etcd3" do |etcd3|
+	etcd3.vm.box = ''' + '"' + vagrant_image + '"' + '''
+	etcd3.vm.hostname = "etcd3.vagrant.test"
+	etcd3.vm.provider :virtualbox do |v|
+	  v.customize ["modifyvm", :id, "--memory", "512"]
 	  v.customize ["modifyvm", :id, "--cpus", "2"]
 	end
   end
@@ -62,9 +79,17 @@ Vagrant.configure("2") do |config|
 	  v.customize ["modifyvm", :id, "--cpus", "2"]
 	end
   end
+  config.vm.define "node2" do |node2|
+	node2.vm.box = ''' + '"' + vagrant_image + '"' + '''
+	node2.vm.hostname = "node2.vagrant.test"
+	node2.vm.provider :virtualbox do |v|
+	  v.customize ["modifyvm", :id, "--memory", "512"]
+	  v.customize ["modifyvm", :id, "--cpus", "2"]
+	end
+  end
 end''')
-		machine_names = ('master1','master2','master3','node1')
-		machines = ('master1.vagrant.test','master2.vagrant.test','master3.vagrant.test','node1.vagrant.test')
+		machine_names = ('master1','master2','etcd1','etcd2','etcd3','node1','node2')
+		machines = ('master1.vagrant.test','master2.vagrant.test','node2.vagrant.test','etcd1.vagrant.test','etcd2.vagrant.test','etcd3.vagrant.test','node1.vagrant.test')
 		if shutit.whoami() != 'root':
 			pw = shutit.get_env_pass()
 		else:
@@ -76,7 +101,10 @@ end''')
 		###############################################################################
 		master1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^master1.vagrant.test | awk '{print $2}'""")
 		master2_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^master2.vagrant.test | awk '{print $2}'""")
-		master3_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^master3.vagrant.test | awk '{print $2}'""")
+		node2_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^node2.vagrant.test | awk '{print $2}'""")
+		etcd1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd1.vagrant.test | awk '{print $2}'""")
+		etcd2_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd2.vagrant.test | awk '{print $2}'""")
+		etcd3_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^etcd3.vagrant.test | awk '{print $2}'""")
 		node1_ip = shutit.send_and_get_output("""vagrant landrush ls | grep -w ^node1.vagrant.test | awk '{print $2}'""")
 		#shutit.begin_asciinema_session(title='chef shutit multinode setup')
 		for machine in machine_names:
@@ -140,34 +168,26 @@ solo true''',note='Create solo.rb file')
 		{
 		  "fqdn": "master2.vagrant.test",
 		  "ipaddress": "''' + master2_ip + '''"
-		},
-		{
-		  "fqdn": "master3.vagrant.test",
-		  "ipaddress": "''' + master3_ip + '''"
 		}
 	  ],
 	  "master_peers": [
 		{
 		  "fqdn": "master2.vagrant.test",
 		  "ipaddress": "''' + master2_ip + '''"
-		},
-		{
-		  "fqdn": "master3.vagrant.test",
-		  "ipaddress": "''' + master3_ip + '''"
 		}
 	  ],
 	  "etcd_servers": [
 		{
-		  "fqdn": "master1.vagrant.test",
-		  "ipaddress": "''' + master1_ip + '''"
+		  "fqdn": "etcd1.vagrant.test",
+		  "ipaddress": "''' + etcd1_ip + '''"
 		},
 		{
-		  "fqdn": "master2.vagrant.test",
-		  "ipaddress": "''' + master2_ip + '''"
+		  "fqdn": "etcd2.vagrant.test",
+		  "ipaddress": "''' + etcd2_ip + '''"
 		},
-		{
-		  "fqdn": "master3.vagrant.test",
-		  "ipaddress": "''' + master3_ip + '''"
+	   {
+		  "fqdn": "etcd3.vagrant.test",
+		  "ipaddress": "''' + etcd3_ip + '''"
 		}
 	  ],
 	  "node_servers": [
@@ -176,16 +196,16 @@ solo true''',note='Create solo.rb file')
 		  "ipaddress": "''' + node1_ip + '''"
 		},
 		{
+		  "fqdn": "node2.vagrant.test",
+		  "ipaddress": "''' + node2_ip + '''"
+		},
+		{
 		  "fqdn": "master1.vagrant.test",
 		  "ipaddress": "''' + master1_ip + '''"
 		},
 		{
 		  "fqdn": "master2.vagrant.test",
 		  "ipaddress": "''' + master2_ip + '''"
-		},
-		{
-		  "fqdn": "master3.vagrant.test",
-		  "ipaddress": "''' + master3_ip + '''"
 		}
 	  ]
 	}
@@ -206,10 +226,10 @@ solo true''',note='Create solo.rb file')
 		shutit.send_until('oc get all','.*kubernetes.*',cadence=60,note='Wait until oc get all returns OK')
 		shutit.send_until('oc get nodes','master1.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
 		shutit.send_until('oc get nodes','master2.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
-		shutit.send_until('oc get nodes','master3.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
 		shutit.send_until('oc get nodes','node1.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
+		shutit.send_until('oc get nodes','node2.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
 		#shutit.end_asciinema_session()
-		shutit.pause_point('')
+
 		shutit.send('yum install -y https://packages.chef.io/stable/el/7/chefdk-1.0.3-1.el7.x86_64.rpm')
 		shutit.send('oc label node master1.vagrant.test region=registry')
 		shutit.send("""oadm registry --config=/etc/origin/master/admin.kubeconfig --service-account=registry --images='registry.access.redhat.com/openshift3/ose-${component}:${version}' --selector=region=registry""",note='Create an ephemeral registry.',check_exit=False)
@@ -221,7 +241,7 @@ solo true''',note='Create solo.rb file')
 etcd_upgrade_servers = node['ose-wrapper']['etcd_upgrade_servers']
 shutdown_servers = node['ose-wrapper']['shutdown_servers']
 
-# - etcd_migration_new_node:               "https://master3.net.thing:2380"
+# - etcd_migration_new_node:               "https://etcd1.net.thing:2380"
 # - etcd_migration_drop_node:              "https://master1.net.thing"
 if master_servers.any? && master_servers.first['fqdn'] == node['fqdn'] && node['ose-wrapper']['etcd_migration_endpoint'] && node['ose-wrapper']['etcd_migration_new_node'] && node['ose-wrapper']['etcd_migration_drop_node']
   # Switched off by default - step 6
