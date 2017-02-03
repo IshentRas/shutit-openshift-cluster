@@ -125,14 +125,14 @@ end''')
 			shutit.send('mkdir -p /root/chef-solo-example/environments')
 			shutit.send('mkdir -p /root/chef-solo-example/logs')
 			shutit.send('cd /root/chef-solo-example/cookbooks')
-			shutit.send('git clone -b cert_retrieval_bugfix https://github.com/IshentRas/cookbook-openshift3')
+			shutit.send('git clone https://github.com/IshentRas/cookbook-openshift3')
 			# Filthy hack to 'override' the node['ipaddress'] value
 			ip_addr = shutit.send_and_get_output("""ip -4 addr show dev eth1 | grep inet | awk '{print $2}' | awk -F/ '{print $1}'""")
 			shutit.send('''sed -i 's/#{node..ipaddress..}/''' + ip_addr + '''/g' /root/chef-solo-example/cookbooks/cookbook-openshift3/attributes/default.rb''')
 			shutit.send("""sed -i "s/node..ipaddress../'""" + ip_addr + """'/g" /root/chef-solo-example/cookbooks/cookbook-openshift3/attributes/default.rb""")
 
 			shutit.send('curl -L https://supermarket.chef.io/cookbooks/iptables/download | tar -zxvf -')
-			shutit.send('curl -L https://supermarket.chef.io/cookbooks/yum/versions/3.9.0/download | tar -zxvf -')
+			shutit.send('curl -L https://supermarket.chef.io/cookbooks/yum/download | tar -zxvf -')
 			shutit.send('curl -L https://supermarket.chef.io/cookbooks/selinux_policy/download | tar -zxvf -')
 			shutit.send('curl -L https://supermarket.chef.io/cookbooks/compat_resource/download | tar -zxvf -')
 			shutit.send_file('/root/chef-solo-example/solo.rb','''cookbook_path [
@@ -194,7 +194,7 @@ solo true''')
 		  "fqdn": "master2.vagrant.test",
 		  "ipaddress": "''' + master2_ip + '''"
 		},
-	   {
+	    {
 		  "fqdn": "master3.vagrant.test",
 		  "ipaddress": "''' + master3_ip + '''"
 		}
@@ -267,33 +267,32 @@ solo true''')
 				shutit.send('echo "#*/5 * * * * chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1" | crontab')
 			shutit.logout()
 			shutit.logout()
-		# https://docs.openshift.com/enterprise/3.2/install_config/downgrade.html
-		for machine in ('master1','master2','master3'):
-			shutit.login(command='vagrant ssh ' + machine)
-			shutit.login(command='sudo su - ')
-			#shutit.send('systemctl stop atomic-openshift-master-api')
-			#shutit.send('systemctl stop atomic-openshift-master-controllers')
-			#shutit.send('systemctl stop atomic-openshift-node')
-			shutit.send_until('systemctl stop origin-master-api','')
-			shutit.send_until('systemctl stop origin-master-controllers','')
-			shutit.logout()
-			shutit.logout()
-		for machine in ('node1',):
-			shutit.login(command='vagrant ssh ' + machine)
-			shutit.login(command='sudo su - ')
-			#shutit.send('systemctl stop atomic-openshift-node')
-			shutit.send_until('systemctl stop origin-node','')
-			shutit.logout()
-			shutit.logout()
+		# Do while up
+		## https://docs.openshift.com/enterprise/3.2/install_config/downgrade.html
+		#for machine in ('master1','master2','master3'):
+		#	shutit.login(command='vagrant ssh ' + machine)
+		#	shutit.login(command='sudo su - ')
+		#	shutit.send_until('systemctl stop origin-master-api','')
+		#	shutit.send_until('systemctl stop origin-master-controllers','')
+		#	shutit.logout()
+		#	shutit.logout()
+		#for machine in ('node1',):
+		#	shutit.login(command='vagrant ssh ' + machine)
+		#	shutit.login(command='sudo su - ')
+		#	#shutit.send('systemctl stop atomic-openshift-node')
+		#	shutit.send_until('systemctl stop origin-node','')
+		#	shutit.logout()
+		#	shutit.logout()
 		###############################################################################
 		
 		###############################################################################
 		# GET CERTS
 		###############################################################################
-		shutit.login(command='vagrant ssh master1')
-		shutit.login(command='sudo su - ')
-		# Extend cluster to 5 in chef on master1 just to get the certs
-		shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''','''{
+		for machine in machine_names:
+			shutit.login(command='vagrant ssh ' + machine)
+			shutit.login(command='sudo su - ')
+			# Extend cluster to 5 in chef on master1 just to get the certs
+			shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''','''{
   "name": "ocp-cluster-environment",
   "description": "",
   "cookbook_versions": {
@@ -341,6 +340,10 @@ solo true''')
 		{
 		  "fqdn": "master2.vagrant.test",
 		  "ipaddress": "''' + master2_ip + '''"
+		},
+		{
+		  "fqdn": "master3.vagrant.test",
+		  "ipaddress": "''' + master3_ip + '''"
 		},
 		{
 		  "fqdn": "etcd1.vagrant.test",
@@ -376,101 +379,23 @@ solo true''')
 	}
   }
 }''')
-		# Re-run chef to generate certs for etcd1,2,3
-		shutit.send_until('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb','.*Report handlers complete.*')
-		# Revert master1 to previous state now certs have been generated.
-		shutit.send_file('''/root/chef-solo-example/environments/ocp-cluster-environment.json''','''{
-  "name": "ocp-cluster-environment",
-  "description": "",
-  "cookbook_versions": {
-									  },
-  "json_class": "Chef::Environment",
-  "chef_type": "environment",
-  "default_attributes": {
-
-  },
-  "override_attributes": {
-	"cookbook-openshift3": {
-	  "openshift_HA": true,
-	  "openshift_cluster_name": "master1.vagrant.test",
-	  "openshift_master_cluster_vip": "''' + master1_ip + '''",
-	  "openshift_deployment_type": "origin",
-	  "master_servers": [
-		{
-		  "fqdn": "master1.vagrant.test",
-		  "ipaddress": "''' + master1_ip + '''"
-		},
-		{
-		  "fqdn": "master2.vagrant.test",
-		  "ipaddress": "''' + master2_ip + '''"
-		},
-		{
-		  "fqdn": "master3.vagrant.test",
-		  "ipaddress": "''' + master3_ip + '''"
-		}
-	  ],
-	  "master_peers": [
-		{
-		  "fqdn": "master2.vagrant.test",
-		  "ipaddress": "''' + master2_ip + '''"
-		},
-		{
-		  "fqdn": "master3.vagrant.test",
-		  "ipaddress": "''' + master3_ip + '''"
-		}
-	  ],
-	  "etcd_servers": [
-		{
-		  "fqdn": "master1.vagrant.test",
-		  "ipaddress": "''' + master1_ip + '''"
-		},
-		{
-		  "fqdn": "master2.vagrant.test",
-		  "ipaddress": "''' + master2_ip + '''"
-		},
-		{
-		  "fqdn": "master3.vagrant.test",
-		  "ipaddress": "''' + master3_ip + '''"
-		}
-	  ],
-	  "node_servers": [
-		{
-		  "fqdn": "node1.vagrant.test",
-		  "ipaddress": "''' + node1_ip + '''"
-		},
-		{
-		  "fqdn": "master1.vagrant.test",
-		  "ipaddress": "''' + master1_ip + '''"
-		},
-		{
-		  "fqdn": "master2.vagrant.test",
-		  "ipaddress": "''' + master2_ip + '''"
-		},
-		{
-		  "fqdn": "master3.vagrant.test",
-		  "ipaddress": "''' + master3_ip + '''"
-		}
-	  ]
-	}
-  }
-}''')
-
-		shutit.send_until('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb','.*Report handlers complete.*')
+			# Re-run chef to generate and redeploy certs
+			shutit.send_until('chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3::adhoc_redeploy_certificates],recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb','.*Report handlers complete.*')
 		shutit.logout()
 		shutit.logout()
 
-		# Shut down openshift again, as chef runs will have started it up.
-		for machine in ('master1','master2','master3'):
-			shutit.login(command='vagrant ssh ' + machine)
-			shutit.login(command='sudo su - ')
-			#shutit.send('systemctl stop atomic-openshift-master-api')
-			#shutit.send('systemctl stop atomic-openshift-master-controllers')
-			#shutit.send('systemctl stop atomic-openshift-node')
-			shutit.send_until('systemctl stop origin-master-api','')
-			shutit.send_until('systemctl stop origin-master-controllers','')
-			shutit.send_until('systemctl stop origin-node','')
-			shutit.logout()
-			shutit.logout()
+		## Shut down openshift again, as chef runs will have started it up.
+		#for machine in ('master1','master2','master3'):
+		#	shutit.login(command='vagrant ssh ' + machine)
+		#	shutit.login(command='sudo su - ')
+		#	#shutit.send('systemctl stop atomic-openshift-master-api')
+		#	#shutit.send('systemctl stop atomic-openshift-master-controllers')
+		#	#shutit.send('systemctl stop atomic-openshift-node')
+		#	shutit.send_until('systemctl stop origin-master-api','')
+		#	shutit.send_until('systemctl stop origin-master-controllers','')
+		#	shutit.send_until('systemctl stop origin-node','')
+		#	shutit.logout()
+		#	shutit.logout()
 		###############################################################################
 
 		###############################################################################
@@ -578,6 +503,8 @@ solo true''')
 		shutit.logout()
 		################################################################################
 
+		# TODO: redeploy certs
+
 		###############################################################################
 		# ETCD2		
 		###############################################################################
@@ -684,6 +611,7 @@ solo true''')
 		shutit.logout()
 		################################################################################
 
+		# TODO: redeploy certs
 
 		###############################################################################
 		# ETCD3
@@ -791,6 +719,8 @@ solo true''')
 		shutit.logout()
 		################################################################################
 
+		# TODO: redeploy certs
+
 		################################################################################
 		# Update the chef config to reflect the new reality, and then run chef everywhere
 		################################################################################
@@ -801,6 +731,8 @@ solo true''')
 			shutit.send('echo "*/5 * * * * chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1" | crontab')
 			shutit.logout()
 			shutit.logout()
+
+		# TODO: redeploy certs
 
 		shutit.pause_point('etcd should be migrated and all ok. Wait for chef to re-run everywhere')
 
