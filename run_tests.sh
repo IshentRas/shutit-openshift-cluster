@@ -2,6 +2,7 @@
 set -x
 set -e
 ./destroy_vms.sh
+[[ -z "$SHUTIT" ]] && SHUTIT="$1/shutit"
 [[ ! -a "$SHUTIT" ]] || [[ -z "$SHUTIT" ]] && SHUTIT="$(which shutit)"
 echo using SHUTIT: $SHUTIT
 if [[ ! -a "$SHUTIT" ]]
