@@ -17,7 +17,7 @@ class shutit_openshift_cluster(ShutItModule):
 		# TODO: move config into machines?
 		memory = shutit.cfg[self.module_id]['memory']
 		# Collect the - expect machines dict to be set up here
-		my_config_module = importlib.import_module('tests/' + shutit.cfg[self.module_id]['chef_config_dir'] + '.machines')
+		my_config_module = importlib.import_module('tests.' + shutit.cfg[self.module_id]['chef_config_dir'] + '.machines')
 		self_dir = os.path.dirname(os.path.abspath(inspect.getsourcefile(lambda:0)))
 		shutit.cfg[self.module_id]['vagrant_run_dir'] = self_dir + '/vagrant_run'
 		run_dir = shutit.cfg[self.module_id]['vagrant_run_dir']
@@ -77,9 +77,12 @@ class shutit_openshift_cluster(ShutItModule):
 				shutit.send('curl -L https://supermarket.chef.io/cookbooks/compat_resource/download | tar -zxvf -',note='Get cookbook dependencies')
 			else:
 				shutit.send('curl -L https://supermarket.chef.io/cookbooks/compat_resource/versions/'+ shutit.cfg['chef_compat_resource_cookbook_version'] + '/download | tar -zxvf -',note='Get cookbook dependencies')
+			# Create solo.rb
+			template = jinja2.Template(file(self_dir + '/tests/' + shutit.cfg[self.module_id]['chef_config_dir'] + '/solo.rb').read())
+			shutit.send_file('/root/chef-solo-example/solo.rb',str(template.render()),note='Create solo.rb file')
 			# Create environment file
 			template = jinja2.Template(file(self_dir + '/tests/' + shutit.cfg[self.module_id]['chef_config_dir'] + '/environment.json').read())
-			shutit.send_file('/root/chef-solo-example/solo.rb',str(template.render(my_config_module=my_config_module)),note='Create environment file')
+			shutit.send_file('/root/chef-solo-example/environments/ocp-cluster-environment.json',str(template.render(my_config_module=my_config_module)),note='Create environment file')
 			shutit.logout()
 			shutit.logout()
 

@@ -1,4 +1,5 @@
 #!/bin/bash
+rm -rf vagrant_run/*
 if [[ $(command -v VBoxManage) != '' ]]
 then
 	while true
