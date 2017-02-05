@@ -1,8 +1,9 @@
 #!/bin/bash
 set -x
 set -e
-bash ./destroy_vms.sh
+./destroy_vms.sh
 [[ ! -a "$SHUTIT" ]] || [[ -z "$SHUTIT" ]] && SHUTIT="$(which shutit)"
+echo using SHUTIT: $SHUTIT
 if [[ ! -a "$SHUTIT" ]]
 then
 	echo "Must have shutit on path, eg export PATH=$PATH:/path/to/shutit_dir"
