@@ -11,5 +11,3 @@
 shutit.core.module.build:yes
 
 
-[tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster]
-pw:^78yuihjk
