@@ -1,14 +1,10 @@
 {
   "name": "ocp-cluster-environment",
   "description": "",
-  "cookbook_versions": {
-
-  },
+  "cookbook_versions": {},
   "json_class": "Chef::Environment",
   "chef_type": "environment",
-  "default_attributes": {
-
-  },
+  "default_attributes": {},
   "override_attributes": {
     "cookbook-openshift3": {
       "master_servers": [
@@ -28,6 +24,7 @@
           "labels": "region=user"
         }
       ]
-    }
+    },
+    "openshift_deployment_type": "origin"
   }
 }

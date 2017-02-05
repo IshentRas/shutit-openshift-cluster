@@ -12,6 +12,7 @@ fi
 for test_dir in $(cd tests && find * -type d && cd - > /dev/null)
 do
 	$SHUTIT build --echo -d bash -m shutit-library/vagrant:shutit-library/virtualbox -s tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster test_config_dir $test_dir "$@"
+	./destroy_vms.sh
 done
 
 

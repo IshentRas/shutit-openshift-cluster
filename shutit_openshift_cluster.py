@@ -29,7 +29,10 @@ class shutit_openshift_cluster(ShutItModule):
 		shutit.send('vagrant init ' + vagrant_image)
 		template = jinja2.Template(file(self_dir + '/tests/' + shutit.cfg[self.module_id]['test_config_dir'] + '/Vagrantfile').read())
 		shutit.send_file(run_dir + '/' + module_name + '/Vagrantfile',str(template.render(vagrant_image=vagrant_image,memory=memory)))
-		pw = file('secret').read()
+		try:
+			pw = file('secret').read()
+		except:
+			pw = ''
 		for machine in test_config_module.machines.keys():
 			shutit.multisend('vagrant up --provider ' + shutit.cfg['shutit-library.virtualization.virtualization.virtualization']['virt_method'] + ' ' + machine,{'assword for':pw},timeout=99999)
 		###############################################################################
@@ -53,9 +56,9 @@ class shutit_openshift_cluster(ShutItModule):
 			shutit.send('echo root:origin | /usr/sbin/chpasswd',note='set root password')
 			shutit.send('systemctl restart sshd',note='restart sshd')
 			shutit.install('epel-release')
-			shutit.send('rpm -i https://packages.chef.io/stable/el/7/chef-12.16.42-1.el7.x86_64.rpm',note='install chef')
+			shutit.send('rpm -i https://packages.chef.io/stable/el/7/chef-' + shutit.cfg[self.module_id]['chef_version'] + '.el7.x86_64.rpm',note='install chef')
 			shutit.send('mkdir -p /root/chef-solo-example /root/chef-solo-example/cookbooks /root/chef-solo-example/environments /root/chef-solo-example/logs',note='Create chef folders')
-			shutit.send('cd /root/chef-solo-example/cookbooks')
+			shutit.send('cd /rootchef-solo-example/cookbooks')
 			shutit.send('git clone https://github.com/IshentRas/cookbook-openshift3',note='Clone chef repo')
 			# Filthy hack to 'override' the node['ipaddress'] value
 			ip_addr = shutit.send_and_get_output("""ip -4 addr show dev eth1 | grep inet | awk '{print $2}' | awk -F/ '{print $1}'""")
@@ -128,6 +131,7 @@ class shutit_openshift_cluster(ShutItModule):
 		shutit.get_config(self.module_id,'chef_iptables_cookbook_version',default='latest')
 		shutit.get_config(self.module_id,'chef_selinux_policy_cookbook_version',default='latest')
 		shutit.get_config(self.module_id,'chef_compat_resource_cookbook_version',default='latest')
+		shutit.get_config(self.module_id,'chef_version',default='12.16.42-1')
 		shutit.get_config(self.module_id,'pw',default='')
 		return True
 
