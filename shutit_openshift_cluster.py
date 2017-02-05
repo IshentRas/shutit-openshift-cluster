@@ -17,7 +17,7 @@ class shutit_openshift_cluster(ShutItModule):
 		# TODO: move config into machines?
 		memory = shutit.cfg[self.module_id]['memory']
 		# Collect the - expect machines dict to be set up here
-		my_config_module = importlib.import_module('tests.' + shutit.cfg[self.module_id]['chef_config_dir'] + '.machines')
+		test_config_module = importlib.import_module('tests.' + shutit.cfg[self.module_id]['test_config_dir'] + '.machines')
 		self_dir = os.path.dirname(os.path.abspath(inspect.getsourcefile(lambda:0)))
 		shutit.cfg[self.module_id]['vagrant_run_dir'] = self_dir + '/vagrant_run'
 		run_dir = shutit.cfg[self.module_id]['vagrant_run_dir']
@@ -27,19 +27,19 @@ class shutit_openshift_cluster(ShutItModule):
 			shutit.send('vagrant plugin install landrush')
 		shutit.send('vagrant plugin install landrush')
 		shutit.send('vagrant init ' + vagrant_image)
-		template = jinja2.Template(file(self_dir + '/tests/' + shutit.cfg[self.module_id]['chef_config_dir'] + '/Vagrantfile').read())
+		template = jinja2.Template(file(self_dir + '/tests/' + shutit.cfg[self.module_id]['test_config_dir'] + '/Vagrantfile').read())
 		shutit.send_file(run_dir + '/' + module_name + '/Vagrantfile',str(template.render(vagrant_image=vagrant_image,memory=memory)))
 		pw = shutit.cfg[self.module_id]['pw']
-		for machine in my_config_module.machines.keys():
+		for machine in test_config_module.machines.keys():
 			shutit.multisend('vagrant up --provider ' + shutit.cfg['shutit-library.virtualization.virtualization.virtualization']['virt_method'] + ' ' + machine,{'assword for':pw},timeout=99999)
 		###############################################################################
 		# SET UP MACHINES AND START CLUSTER
 		###############################################################################
-		for machine in sorted(my_config_module.machines.keys()):
-			ip = shutit.send_and_get_output('''vagrant landrush ls | grep -w ^''' + my_config_module.machines[machine]['fqdn'] + ''' | awk '{print $2}' ''')
-			my_config_module.machines.get(machine).update({'ip':ip})
+		for machine in sorted(test_config_module.machines.keys()):
+			ip = shutit.send_and_get_output('''vagrant landrush ls | grep -w ^''' + test_config_module.machines[machine]['fqdn'] + ''' | awk '{print $2}' ''')
+			test_config_module.machines.get(machine).update({'ip':ip})
 		#shutit.begin_asciinema_session(title='chef shutit multinode setup')
-		for machine in my_config_module.machines.keys():
+		for machine in test_config_module.machines.keys():
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
 			shutit.send('''sed -i 's/enabled=1/enabled=0/' /etc/yum/pluginconf.d/fastestmirror.conf''',note='Switch off fastest mirror - it gives me nothing but grief (looooong waits')
@@ -78,28 +78,26 @@ class shutit_openshift_cluster(ShutItModule):
 			else:
 				shutit.send('curl -L https://supermarket.chef.io/cookbooks/compat_resource/versions/'+ shutit.cfg['chef_compat_resource_cookbook_version'] + '/download | tar -zxvf -',note='Get cookbook dependencies')
 			# Create solo.rb
-			template = jinja2.Template(file(self_dir + '/tests/' + shutit.cfg[self.module_id]['chef_config_dir'] + '/solo.rb').read())
+			template = jinja2.Template(file(self_dir + '/tests/' + shutit.cfg[self.module_id]['test_config_dir'] + '/solo.rb').read())
 			shutit.send_file('/root/chef-solo-example/solo.rb',str(template.render()),note='Create solo.rb file')
 			# Create environment file
-			template = jinja2.Template(file(self_dir + '/tests/' + shutit.cfg[self.module_id]['chef_config_dir'] + '/environment.json').read())
-			shutit.send_file('/root/chef-solo-example/environments/ocp-cluster-environment.json',str(template.render(my_config_module=my_config_module)),note='Create environment file')
+			template = jinja2.Template(file(self_dir + '/tests/' + shutit.cfg[self.module_id]['test_config_dir'] + '/environment.json').read())
+			shutit.send_file('/root/chef-solo-example/environments/ocp-cluster-environment.json',str(template.render(test_config_module=test_config_module)),note='Create environment file')
 			shutit.logout()
 			shutit.logout()
 
-		for machine in my_config_module.machines.keys():
+		for machine in test_config_module.machines.keys():
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
-			shutit.send('echo "*/5 * * * * chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1" | crontab',note='set up crontab on ' + machine)
+			shutit.send('echo "* * * * * chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1" | crontab',note='set up crontab on ' + machine)
 			shutit.logout()
 			shutit.logout()
 		
 		shutit.login(command='vagrant ssh master1')
 		shutit.login(command='sudo su - ')
 		shutit.send_until('oc get all || tail /root/chef-solo-example/logs/chef.log','.*kubernetes.*',cadence=60,note='Wait until oc get all returns OK')
-		shutit.send_until('oc get nodes','master1.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
-		shutit.send_until('oc get nodes','master2.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
-		shutit.send_until('oc get nodes','master3.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
-		shutit.send_until('oc get nodes','node1.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
+		for machine in test_config_module.machines.keys():
+			shutit.send_until('oc get nodes',machine + '.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
 		#shutit.end_asciinema_session()
 		#shutit.pause_point('')
 		shutit.logout()
@@ -124,7 +122,7 @@ class shutit_openshift_cluster(ShutItModule):
 		#shutit.get_config(self.module_id,'memory',default='1024')
 		shutit.get_config(self.module_id,'memory',default='512')
 		# Vagrantfile and environment files in here
-		shutit.get_config(self.module_id,'chef_config_dir',default='multi_node_basic')
+		shutit.get_config(self.module_id,'test_config_dir',default='multi_node_basic')
 		# To test different cookbook versions
 		shutit.get_config(self.module_id,'chef_yum_cookbook_version',default='latest')
 		shutit.get_config(self.module_id,'chef_iptables_cookbook_version',default='latest')
