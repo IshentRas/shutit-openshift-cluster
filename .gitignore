@@ -1,1 +1,3 @@
 *pyc
+**/*.pyc
+vagrant_run/shutit*

@@ -1,0 +1,72 @@
+{
+  "name": "ocp-cluster-environment",
+  "description": "",
+  "cookbook_versions": {},
+  "json_class": "Chef::Environment",
+  "chef_type": "environment",
+  "default_attributes": {},
+  "override_attributes": {
+	"cookbook-openshift3": {
+	  "openshift_HA": true,
+	  "openshift_cluster_name": "master1.vagrant.test",
+	  "openshift_master_cluster_vip": "{{ master1_ip }}",
+	  "openshift_deployment_type": "origin",
+	  "master_servers": [
+		{
+		  "fqdn": "master1.vagrant.test",
+		  "ipaddress": "{{ my_config_module.machines['master1']['ip'] }}"
+		},
+		{
+		  "fqdn": "master2.vagrant.test",
+		  "ipaddress": "{{ my_config_module.machines['master2']['ip'] }}"
+		},
+		{
+		  "fqdn": "master3.vagrant.test",
+		  "ipaddress": "{{ my_config_module.machines['master3']['ip'] }}"
+		}
+	  ],
+	  "master_peers": [
+		{
+		  "fqdn": "master2.vagrant.test",
+		  "ipaddress": "{{ my_config_module.machines['master2']['ip'] }}"
+		},
+		{
+		  "fqdn": "master3.vagrant.test",
+		  "ipaddress": "{{ my_config_module.machines['master3']['ip'] }}"
+		}
+	  ],
+	  "etcd_servers": [
+		{
+		  "fqdn": "master1.vagrant.test",
+		  "ipaddress": "{{ my_config_module.machines['master1']['ip'] }}"
+		},
+		{
+		  "fqdn": "master2.vagrant.test",
+		  "ipaddress": "{{ my_config_module.machines['master2']['ip'] }}"
+		},
+		{
+		  "fqdn": "master3.vagrant.test",
+		  "ipaddress": "{{ my_config_module.machines['master3']['ip'] }}"
+		}
+	  ],
+	  "node_servers": [
+		{
+		  "fqdn": "node1.vagrant.test",
+		  "ipaddress": "{{ my_config_module.machines['node1']['ip'] }}"
+		},
+		{
+		  "fqdn": "master1.vagrant.test",
+		  "ipaddress": "{{ my_config_module.machines['master1']['ip'] }}"
+		},
+		{
+		  "fqdn": "master2.vagrant.test",
+		  "ipaddress": "{{ my_config_module.machines['master2']['ip'] }}"
+		},
+		{
+		  "fqdn": "master3.vagrant.test",
+		  "ipaddress": "{{ my_config_module.machines['master3']['ip'] }}"
+		}
+	  ]
+	}
+  }
+}
