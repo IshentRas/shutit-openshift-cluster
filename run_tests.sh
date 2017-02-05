@@ -9,9 +9,9 @@ then
 	echo "Must have shutit on path, eg export PATH=$PATH:/path/to/shutit_dir"
 	exit 1
 fi
-for test_dir in single_master_embedded_etcd multi_node_basic
+for test_dir in $(cd tests && find * -type d && cd - > /dev/null)
 do
-	$SHUTIT build --echo -d bash -m shutit-library/vagrant:shutit-library/virtualbox -s tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster test_config_dir $test "$@"
+	$SHUTIT build --echo -d bash -m shutit-library/vagrant:shutit-library/virtualbox -s tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster test_config_dir $test_dir "$@"
 done
 
 

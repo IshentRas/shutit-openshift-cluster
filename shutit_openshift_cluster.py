@@ -29,7 +29,7 @@ class shutit_openshift_cluster(ShutItModule):
 		shutit.send('vagrant init ' + vagrant_image)
 		template = jinja2.Template(file(self_dir + '/tests/' + shutit.cfg[self.module_id]['test_config_dir'] + '/Vagrantfile').read())
 		shutit.send_file(run_dir + '/' + module_name + '/Vagrantfile',str(template.render(vagrant_image=vagrant_image,memory=memory)))
-		pw = shutit.cfg[self.module_id]['pw']
+		pw = file('secret').read()
 		for machine in test_config_module.machines.keys():
 			shutit.multisend('vagrant up --provider ' + shutit.cfg['shutit-library.virtualization.virtualization.virtualization']['virt_method'] + ' ' + machine,{'assword for':pw},timeout=99999)
 		###############################################################################

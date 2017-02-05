@@ -13,18 +13,18 @@
     "cookbook-openshift3": {
       "master_servers": [
         {
-          "fqdn": "{{ test_config_module['master1']['fqdn'] }}",
-          "ipaddress": "{{ test_config_module['master1']['ip'] }}"
+          "fqdn": "{{ test_config_module.machines['master1']['fqdn'] }}",
+          "ipaddress": "{{ test_config_module.machines['master1']['ip'] }}"
         }
       ],
       "node_servers": [
         {
-          "fqdn": "{{ test_config_module['node1']['fqdn'] }}",
-          "ipaddress": "{{ test_config_module['node1']['ip'] }}"
+          "fqdn": "{{ test_config_module.machines['node1']['fqdn'] }}",
+          "ipaddress": "{{ test_config_module.machines['node1']['ip'] }}"
         },
         {
-          "fqdn": "{{ test_config_module['node1']['fqdn'] }}",
-          "ipaddress": "{{ test_config_module['node2']['ip'] }}",
+          "fqdn": "{{ test_config_module.machines['node1']['fqdn'] }}",
+          "ipaddress": "{{ test_config_module.machines['node2']['ip'] }}",
           "labels": "region=user"
         }
       ]
