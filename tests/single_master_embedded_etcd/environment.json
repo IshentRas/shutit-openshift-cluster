@@ -24,8 +24,8 @@
           "ipaddress": "{{ test_config_module.machines['node2']['ip'] }}",
           "labels": "region=user"
         }
-      ]
-    },
-    "openshift_deployment_type": "origin"
+      ],
+      "openshift_deployment_type": "origin"
+    }
   }
 }
