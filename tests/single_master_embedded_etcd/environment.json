@@ -7,6 +7,7 @@
   "default_attributes": {},
   "override_attributes": {
     "cookbook-openshift3": {
+      "ose_major_version": "{{ cfg['ose_major_version'] }}",
       "master_servers": [
         {
           "fqdn": "{{ test_config_module.machines['master1']['fqdn'] }}",

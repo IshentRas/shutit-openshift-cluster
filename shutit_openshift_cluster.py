@@ -28,7 +28,7 @@ class shutit_openshift_cluster(ShutItModule):
 		shutit.send('vagrant plugin install landrush')
 		shutit.send('vagrant init ' + vagrant_image)
 		template = jinja2.Template(file(self_dir + '/tests/' + shutit.cfg[self.module_id]['test_config_dir'] + '/Vagrantfile').read())
-		shutit.send_file(run_dir + '/' + module_name + '/Vagrantfile',str(template.render(vagrant_image=vagrant_image,memory=memory)))
+		shutit.send_file(run_dir + '/' + module_name + '/Vagrantfile',str(template.render(vagrant_image=vagrant_image,cfg=shutit.cfg[self.module_id])))
 		try:
 			pw = file('secret').read()
 		except:
@@ -85,7 +85,7 @@ class shutit_openshift_cluster(ShutItModule):
 			shutit.send_file('/root/chef-solo-example/solo.rb',str(template.render()),note='Create solo.rb file')
 			# Create environment file
 			template = jinja2.Template(file(self_dir + '/tests/' + shutit.cfg[self.module_id]['test_config_dir'] + '/environment.json').read())
-			shutit.send_file('/root/chef-solo-example/environments/ocp-cluster-environment.json',str(template.render(test_config_module=test_config_module)),note='Create environment file')
+			shutit.send_file('/root/chef-solo-example/environments/ocp-cluster-environment.json',str(template.render(test_config_module=test_config_module,cfg=shutit.cfg[self.module_id])),note='Create environment file')
 			shutit.logout()
 			shutit.logout()
 
@@ -133,6 +133,7 @@ class shutit_openshift_cluster(ShutItModule):
 		shutit.get_config(self.module_id,'chef_compat_resource_cookbook_version',default='latest')
 		shutit.get_config(self.module_id,'chef_version',default='12.16.42-1')
 		shutit.get_config(self.module_id,'pw',default='')
+		shutit.get_config(self.module_id,'ose_major_version',default='1.3')
 		return True
 
 

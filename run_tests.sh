@@ -10,10 +10,17 @@ then
 	echo "Must have shutit on path, eg export PATH=$PATH:/path/to/shutit_dir"
 	exit 1
 fi
-for test_dir in $(cd tests && find * -type d && cd - > /dev/null)
+for ose_major_versions in 3.3 3.2
 do
-	$SHUTIT build --echo -d bash -m shutit-library/vagrant:shutit-library/virtualbox -s tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster test_config_dir $test_dir "$@"
-	./destroy_vms.sh
+	for test_dir in $(cd tests && find * -type d && cd - > /dev/null)
+	do
+		$SHUTIT build \
+			--echo -d bash \
+			-m shutit-library/vagrant:shutit-library/virtualbox \
+			-s tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster test_config_dir $test_dir \
+			-s tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster ose_major_version $ose_major_version"$@"
+		./destroy_vms.sh
+	done
 done
 
 
