@@ -67,19 +67,19 @@ class shutit_openshift_cluster(ShutItModule):
 			if shutit.cfg[self.module_id]['chef_iptables_cookbook_version'] == 'latest':
 				shutit.send('curl -L https://supermarket.chef.io/cookbooks/iptables/download | tar -zxvf -',note='Get cookbook dependencies')
 			else:
-				shutit.send('curl -L https://supermarket.chef.io/cookbooks/iptables/versions/'+ shutit.cfg['chef_iptables_cookbook_version'] + '/download | tar -zxvf -',note='Get cookbook dependencies')
+				shutit.send('curl -L https://supermarket.chef.io/cookbooks/iptables/versions/'+ shutit.cfg[self.module_id]['chef_iptables_cookbook_version'] + '/download | tar -zxvf -',note='Get cookbook dependencies')
 			if shutit.cfg[self.module_id]['chef_yum_cookbook_version'] == 'latest':
 				shutit.send('curl -L https://supermarket.chef.io/cookbooks/yum/download | tar -zxvf -',note='Get cookbook dependencies')
 			else:
-				shutit.send('curl -L https://supermarket.chef.io/cookbooks/yum/versions/'+ shutit.cfg['chef_yum_cookbook_version'] + '/download | tar -zxvf -',note='Get cookbook dependencies')
+				shutit.send('curl -L https://supermarket.chef.io/cookbooks/yum/versions/'+ shutit.cfg[self.module_id]['chef_yum_cookbook_version'] + '/download | tar -zxvf -',note='Get cookbook dependencies')
 			if shutit.cfg[self.module_id]['chef_selinux_policy_cookbook_version'] == 'latest':
 				shutit.send('curl -L https://supermarket.chef.io/cookbooks/selinux_policy/download | tar -zxvf -',note='Get cookbook dependencies')
 			else:
-				shutit.send('curl -L https://supermarket.chef.io/cookbooks/selinux_policy/versions/'+ shutit.cfg['chef_selinux_policy_cookbook_version'] + '/download | tar -zxvf -',note='Get cookbook dependencies')
+				shutit.send('curl -L https://supermarket.chef.io/cookbooks/selinux_policy/versions/'+ shutit.cfg[self.module_id]['chef_selinux_policy_cookbook_version'] + '/download | tar -zxvf -',note='Get cookbook dependencies')
 			if shutit.cfg[self.module_id]['chef_compat_resource_cookbook_version'] == 'latest':
 				shutit.send('curl -L https://supermarket.chef.io/cookbooks/compat_resource/download | tar -zxvf -',note='Get cookbook dependencies')
 			else:
-				shutit.send('curl -L https://supermarket.chef.io/cookbooks/compat_resource/versions/'+ shutit.cfg['chef_compat_resource_cookbook_version'] + '/download | tar -zxvf -',note='Get cookbook dependencies')
+				shutit.send('curl -L https://supermarket.chef.io/cookbooks/compat_resource/versions/'+ shutit.cfg[self.module_id]['chef_compat_resource_cookbook_version'] + '/download | tar -zxvf -',note='Get cookbook dependencies')
 			# Create solo.rb
 			template = jinja2.Template(file(self_dir + '/tests/' + shutit.cfg[self.module_id]['test_config_dir'] + '/solo.rb').read())
 			shutit.send_file('/root/chef-solo-example/solo.rb',str(template.render()),note='Create solo.rb file')
