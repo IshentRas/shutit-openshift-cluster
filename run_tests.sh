@@ -10,7 +10,7 @@ then
 	echo "Must have shutit on path, eg export PATH=$PATH:/path/to/shutit_dir"
 	exit 1
 fi
-for ose_major_versions in 3.3 3.2
+for ose_major_version in 3.3 3.2
 do
 	for test_dir in $(cd tests && find * -type d && cd - > /dev/null)
 	do
