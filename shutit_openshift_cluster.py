@@ -100,7 +100,8 @@ class shutit_openshift_cluster(ShutItModule):
 		shutit.login(command='sudo su - ')
 		shutit.send_until('oc get all || tail /root/chef-solo-example/logs/chef.log','.*kubernetes.*',cadence=60,note='Wait until oc get all returns OK')
 		for machine in test_config_module.machines.keys():
-			shutit.send_until('oc get nodes',machine + '.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
+			if test_config_module.machines[machine]['is_node']:
+				shutit.send_until('oc get nodes',machine + '.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
 		#shutit.end_asciinema_session()
 		#shutit.pause_point('')
 		shutit.logout()

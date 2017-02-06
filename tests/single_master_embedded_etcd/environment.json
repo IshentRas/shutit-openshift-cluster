@@ -20,7 +20,7 @@
           "ipaddress": "{{ test_config_module.machines['node1']['ip'] }}"
         },
         {
-          "fqdn": "{{ test_config_module.machines['node1']['fqdn'] }}",
+          "fqdn": "{{ test_config_module.machines['node2']['fqdn'] }}",
           "ipaddress": "{{ test_config_module.machines['node2']['ip'] }}",
           "labels": "region=user"
         }
