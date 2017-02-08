@@ -60,6 +60,8 @@ class shutit_openshift_cluster(ShutItModule):
 			shutit.send('mkdir -p /root/chef-solo-example /root/chef-solo-example/cookbooks /root/chef-solo-example/environments /root/chef-solo-example/logs',note='Create chef folders')
 			shutit.send('cd /root/chef-solo-example/cookbooks')
 			shutit.send('git clone -b ' + shutit.cfg[self.module_id]['cookbook_branch'] + ' https://github.com/IshentRas/cookbook-openshift3',note='Clone chef repo')
+			if shutit.cfg[self.module_id]['inject_compat_resource']:                                                                                                                           
+				shutit.send("""echo "depends 'compat_resource'" >> cookbook-openshift3/metadata.rb""") 
 			# Filthy hack to 'override' the node['ipaddress'] value
 			ip_addr = shutit.send_and_get_output("""ip -4 addr show dev eth1 | grep inet | awk '{print $2}' | awk -F/ '{print $1}'""")
 			shutit.send('''sed -i 's/#{node..ipaddress..}/''' + ip_addr + '''/g' /root/chef-solo-example/cookbooks/cookbook-openshift3/attributes/default.rb''')
@@ -136,8 +138,8 @@ class shutit_openshift_cluster(ShutItModule):
 		shutit.get_config(self.module_id,'pw',default='')
 		shutit.get_config(self.module_id,'ose_major_version',default='1.3')
 		shutit.get_config(self.module_id,'cookbook_branch',default='master')
-		# Not used yet
 		shutit.get_config(self.module_id,'ose_version',default='1.4.1-1.el7')
+		shutit.get_config(self.module_id,'inject_compat_resource',default=False,boolean=True) 
 		return True
 
 
