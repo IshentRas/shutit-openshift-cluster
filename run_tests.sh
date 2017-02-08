@@ -45,15 +45,6 @@ fi
 
 # TODO: 1.2?
 
-# WORKED
-#$SHUTIT build \
-#	--echo -d bash \
-#	-m shutit-library/vagrant:shutit-library/virtualbox \
-#	-s tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster test_config_dir                       multi_node_basic \
-#	-s tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster ose_version                           1.3.3-1.el7
-#./destroy_vms.sh
-
-
 $SHUTIT build \
 	--echo -d bash \
 	-m shutit-library/vagrant:shutit-library/virtualbox \
