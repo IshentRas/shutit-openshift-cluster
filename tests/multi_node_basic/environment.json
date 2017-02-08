@@ -11,6 +11,7 @@
 	  "openshift_cluster_name": "{{ test_config_module.machines['master1']['fqdn'] }}",
 	  "openshift_master_cluster_vip": "{{ test_config_module.machines['master1']['ip'] }}",
 	  "openshift_deployment_type": "origin",
+      "ose_version": "{{ cfg['ose_version'] }}",
       "ose_major_version": "{{ cfg['ose_major_version'] }}",
 	  "master_servers": [
 		{
