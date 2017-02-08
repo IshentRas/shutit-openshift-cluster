@@ -10,7 +10,7 @@ then
 	exit 1
 fi
 
-if [[ ${SKIP:0} = '1' ]]
+if [[ ${SKIP:0} = '0' ]]
 then
 	for ose_major_version in 1.4 1.3
 	do
