@@ -105,7 +105,7 @@ class shutit_openshift_cluster(ShutItModule):
 			if test_config_module.machines[machine]['is_node']:
 				shutit.send_until('oc get nodes',machine + '.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
 		#shutit.end_asciinema_session()
-		#shutit.pause_point('')
+		shutit.pause_point('')
 		shutit.logout()
 		shutit.logout()
 		###############################################################################
