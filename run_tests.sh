@@ -10,7 +10,14 @@ then
 	exit 1
 fi
 
-if [[ ${SKIP:0} = '0' ]]
+if [[ $COOKBOOK_VERSION != '' ]]
+then
+	cookbook_version="${COOKBOOK_VERSION}"
+else
+	cookbook_version=master
+fi
+
+if [[ ${SKIP:-0} = '0' ]]
 then
 	for ose_major_version in 1.4 1.3
 	do
@@ -30,6 +37,7 @@ then
 				-s tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster test_config_dir                       ${test_dir} \
 				-s tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster ose_version                           ${ose_version} \
 				-s tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster ose_major_version                     ${ose_major_version} \
+				-s tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster cookbook_version                      ${cookbook_version} \
 				-s tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster chef_yum_cookbook_version             latest \
 				-s tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster chef_iptables_cookbook_version        latest \
 				-s tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster chef_selinux_policy_cookbook_version  latest \
