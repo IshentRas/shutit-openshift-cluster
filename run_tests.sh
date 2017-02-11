@@ -30,6 +30,7 @@ then
 			then
 			        ose_version="1.3.3-1.el7"
 			elif [[ $ose_major_version == '1.2' ]]
+			then
 					ose_version="1.2.1-1.el7"
 			fi
 	
