@@ -1,19 +1,13 @@
 {
-  "name": "ocp-cluster-environment",
-  "description": "",
-  "cookbook_versions": {},
-  "json_class": "Chef::Environment",
   "chef_type": "environment",
+  "cookbook_versions": {},
   "default_attributes": {},
+  "description": "",
+  "json_class": "Chef::Environment",
+  "name": "ocp-cluster-environment",
   "override_attributes": {
 	"cookbook-openshift3": {
-	  "openshift_HA": true,
-	  "openshift_cluster_name": "{{ test_config_module.machines['master1']['fqdn'] }}",
-	  "openshift_master_cluster_vip": "{{ test_config_module.machines['master1']['ip'] }}",
-	  "openshift_deployment_type": "origin",
-      "ose_version": "{{ cfg['ose_version'] }}",
-      "ose_major_version": "{{ cfg['ose_major_version'] }}",
-	  "master_servers": [
+	  "etcd_servers": [
 		{
 		  "fqdn": "{{ test_config_module.machines['master1']['fqdn'] }}",
 		  "ipaddress": "{{ test_config_module.machines['master1']['ip'] }}"
@@ -37,7 +31,7 @@
 		  "ipaddress": "{{ test_config_module.machines['master3']['ip'] }}"
 		}
 	  ],
-	  "etcd_servers": [
+	  "master_servers": [
 		{
 		  "fqdn": "{{ test_config_module.machines['master1']['fqdn'] }}",
 		  "ipaddress": "{{ test_config_module.machines['master1']['ip'] }}"
@@ -68,7 +62,13 @@
 		  "fqdn": "{{ test_config_module.machines['master3']['fqdn'] }}",
 		  "ipaddress": "{{ test_config_module.machines['master3']['ip'] }}"
 		}
-	  ]
+	  ],
+	  "openshift_HA": true,
+	  "openshift_cluster_name": "{{ test_config_module.machines['master1']['fqdn'] }}",
+	  "openshift_deployment_type": "origin",
+	  "openshift_master_cluster_vip": "{{ test_config_module.machines['master1']['ip'] }}",
+      "ose_major_version": "{{ cfg['ose_major_version'] }}",
+      "ose_version": "{{ cfg['ose_version'] }}"
 	}
   }
 }
