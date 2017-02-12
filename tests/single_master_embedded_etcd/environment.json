@@ -17,7 +17,8 @@
       "node_servers": [
         {
           "fqdn": "{{ test_config_module.machines['node1']['fqdn'] }}",
-          "ipaddress": "{{ test_config_module.machines['node1']['ip'] }}"
+          "ipaddress": "{{ test_config_module.machines['node1']['ip'] }}",
+          "labels": "region=infra"
         },
         {
           "fqdn": "{{ test_config_module.machines['node2']['fqdn'] }}",

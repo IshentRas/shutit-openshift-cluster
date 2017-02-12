@@ -21,16 +21,6 @@
 		  "ipaddress": "{{ test_config_module.machines['master3']['ip'] }}"
 		}
 	  ],
-	  "master_peers": [
-		{
-		  "fqdn": "{{ test_config_module.machines['master2']['fqdn'] }}",
-		  "ipaddress": "{{ test_config_module.machines['master2']['ip'] }}"
-		},
-		{
-		  "fqdn": "{{ test_config_module.machines['master3']['fqdn'] }}",
-		  "ipaddress": "{{ test_config_module.machines['master3']['ip'] }}"
-		}
-	  ],
 	  "master_servers": [
 		{
 		  "fqdn": "{{ test_config_module.machines['master1']['fqdn'] }}",
@@ -52,23 +42,28 @@
 		},
 		{
 		  "fqdn": "{{ test_config_module.machines['master1']['fqdn'] }}",
-		  "ipaddress": "{{ test_config_module.machines['master1']['ip'] }}"
+		  "ipaddress": "{{ test_config_module.machines['master1']['ip'] }}",
+                  "labels": "region=infra",
+                  "schedulable": true
 		},
 		{
 		  "fqdn": "{{ test_config_module.machines['master2']['fqdn'] }}",
-		  "ipaddress": "{{ test_config_module.machines['master2']['ip'] }}"
+		  "ipaddress": "{{ test_config_module.machines['master2']['ip'] }}",
+                  "labels": "region=infra",
+                  "schedulable": true
 		},
 		{
 		  "fqdn": "{{ test_config_module.machines['master3']['fqdn'] }}",
-		  "ipaddress": "{{ test_config_module.machines['master3']['ip'] }}"
+		  "ipaddress": "{{ test_config_module.machines['master3']['ip'] }}",
+                  "labels": "region=infra",
+                  "schedulable": true
 		}
 	  ],
 	  "openshift_HA": true,
 	  "openshift_cluster_name": "{{ test_config_module.machines['master1']['fqdn'] }}",
 	  "openshift_deployment_type": "origin",
-	  "openshift_master_cluster_vip": "{{ test_config_module.machines['master1']['ip'] }}",
-      "ose_major_version": "{{ cfg['ose_major_version'] }}",
-      "ose_version": "{{ cfg['ose_version'] }}"
+      	  "ose_major_version": "{{ cfg['ose_major_version'] }}",
+          "ose_version": "{{ cfg['ose_version'] }}"
 	}
   }
 }
