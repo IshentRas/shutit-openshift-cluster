@@ -138,7 +138,7 @@ class shutit_openshift_cluster(ShutItModule):
 		shutit.get_config(self.module_id,'chef_compat_resource_cookbook_version',default='latest')
 		shutit.get_config(self.module_id,'chef_version',default='12.16.42-1')
 		shutit.get_config(self.module_id,'pw',default='')
-		shutit.get_config(self.module_id,'ose_major_version',default='1.3')
+		shutit.get_config(self.module_id,'ose_major_version',default='1.4')
 		shutit.get_config(self.module_id,'cookbook_branch',default='master')
 		shutit.get_config(self.module_id,'ose_version',default='1.4.1-1.el7')
 		shutit.get_config(self.module_id,'inject_compat_resource',default=False,boolean=True) 
