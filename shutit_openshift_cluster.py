@@ -90,12 +90,10 @@ class shutit_openshift_cluster(ShutItModule):
 			shutit.logout()
 			shutit.logout()
 
-		count = 0
 		for machine in test_config_module.machines.keys():
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
-			shutit.send('echo "*/5 * * * * sleep ' + str(60*count) + '&& chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1" | crontab',note='set up crontab on ' + machine)	
-			count += 1
+			shutit.send('echo "*/5 * * * * chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1" | crontab',note='set up crontab on ' + machine)	
 			shutit.logout()
 			shutit.logout()
 	
@@ -109,25 +107,9 @@ class shutit_openshift_cluster(ShutItModule):
 				shutit.send_until('oc get nodes',machine + '.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
 		for machine in test_config_module.machines.keys():
 			shutit.send('oc label node ' + machine + '.vagrant.test region=' + test_config_module.machines[machine]['region'])
-			shutit.send('oadm manage-node ' + machine + '.vagrant.test --schedulable=true')
 		shutit.send_until('oc get pods | grep ^router-','.*Running.*',cadence=30)
 		shutit.send_until('oc get pods | grep ^docker-registry-','.*Running.*',cadence=30)
 		shutit.pause_point('')
-		shutit.logout()
-		shutit.logout()
-
-		for machine in test_config_module.machines.keys():
-			shutit.login(command='vagrant ssh ' + machine)
-			shutit.login(command='sudo su - ')
-			shutit.send('crontab -r')
-			shutit.logout()
-			shutit.logout()
-	
-
-		shutit.login(command='vagrant ssh master1')
-		shutit.login(command='sudo su - ')
-		for machine in test_config_module.machines.keys():
-			shutit.send('oadm manage-node ' + machine + '.vagrant.test --schedulable=true')
 		shutit.logout()
 		shutit.logout()
 
