@@ -91,10 +91,12 @@ class shutit_openshift_cluster(ShutItModule):
 			shutit.logout()
 			shutit.logout()
 
+		count = 0
 		for machine in test_config_module.machines.keys():
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
-			shutit.send('echo "*/5 * * * * chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1" | crontab',note='set up crontab on ' + machine)
+			shutit.send('echo "*/5 * * * * sleep ' + str(60*count) + '&& chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1" | crontab',note='set up crontab on ' + machine)	
+			count += 1
 			shutit.logout()
 			shutit.logout()
 		
