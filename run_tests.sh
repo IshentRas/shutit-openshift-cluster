@@ -17,8 +17,23 @@ else
 	cookbook_version="master"
 fi
 
-if [[ ${SKIP:-0} = '0' ]]
+if [[ ${QUICK:-0} = '1' ]]
 then
+	$SHUTIT build \
+		--echo -d bash \
+		-m shutit-library/vagrant:shutit-library/virtualbox \
+		-s tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster test_config_dir                       multi_node_basic \
+		-s tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster ose_version                           1.4.1-1.el7 \
+		-s tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster ose_major_version                     1.4 \
+		-s tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster cookbook_version                      ${cookbook_version} \
+		-s tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster chef_yum_cookbook_version             latest \
+		-s tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster chef_iptables_cookbook_version        latest \
+		-s tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster chef_selinux_policy_cookbook_version  latest \
+		-s tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster chef_compat_resource_cookbook_version latest \
+		-s tk.shutit.shutit_openshift_cluster.shutit_openshift_cluster chef_version                          12.16.42-1 \
+		"$@"
+	./destroy_vms.sh
+else
 	for ose_major_version in 1.4 1.3 1.2
 	do
 		for test_dir in $(cd tests && find * -type d && cd - > /dev/null)

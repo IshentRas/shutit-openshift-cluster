@@ -41,7 +41,6 @@ class shutit_openshift_cluster(ShutItModule):
 		for machine in sorted(test_config_module.machines.keys()):
 			ip = shutit.send_and_get_output('''vagrant landrush ls | grep -w ^''' + test_config_module.machines[machine]['fqdn'] + ''' | awk '{print $2}' ''')
 			test_config_module.machines.get(machine).update({'ip':ip})
-		#shutit.begin_asciinema_session(title='chef shutit multinode setup')
 		for machine in test_config_module.machines.keys():
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
@@ -99,17 +98,39 @@ class shutit_openshift_cluster(ShutItModule):
 			count += 1
 			shutit.logout()
 			shutit.logout()
-		
+	
+		# CHECKS
+		# 1) CHECK NODES COME UP	
 		shutit.login(command='vagrant ssh master1')
 		shutit.login(command='sudo su - ')
 		shutit.send_until('oc get all || tail /root/chef-solo-example/logs/chef.log','.*kubernetes.*',cadence=60,note='Wait until oc get all returns OK')
 		for machine in test_config_module.machines.keys():
 			if test_config_module.machines[machine]['is_node']:
 				shutit.send_until('oc get nodes',machine + '.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
-		#shutit.end_asciinema_session()
+		for machine in test_config_module.machines.keys():
+			shutit.send('oc label node ' + machine + '.vagrant.test region=' + test_config_module.machines[machine]['region'])
+			shutit.send('oadm manage-node ' + machine + '.vagrant.test --schedulable=true')
+		shutit.send_until('oc get pods | grep ^router-','.*Running.*',cadence=30)
+		shutit.send_until('oc get pods | grep ^docker-registry-','.*Running.*',cadence=30)
 		shutit.pause_point('')
 		shutit.logout()
 		shutit.logout()
+
+		for machine in test_config_module.machines.keys():
+			shutit.login(command='vagrant ssh ' + machine)
+			shutit.login(command='sudo su - ')
+			shutit.send('crontab -r')
+			shutit.logout()
+			shutit.logout()
+	
+
+		shutit.login(command='vagrant ssh master1')
+		shutit.login(command='sudo su - ')
+		for machine in test_config_module.machines.keys():
+			shutit.send('oadm manage-node ' + machine + '.vagrant.test --schedulable=true')
+		shutit.logout()
+		shutit.logout()
+
 		###############################################################################
 		# TODO: set up core services and do more in-depth tests
 		#shutit.send('git clone --depth=1 https://github.com/openshift/origin')
