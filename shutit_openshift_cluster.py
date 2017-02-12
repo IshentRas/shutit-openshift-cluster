@@ -105,8 +105,6 @@ class shutit_openshift_cluster(ShutItModule):
 		for machine in test_config_module.machines.keys():
 			if test_config_module.machines[machine]['is_node']:
 				shutit.send_until('oc get nodes',machine + '.* Ready.*',cadence=60,note='Wait until oc get all returns OK')
-		for machine in test_config_module.machines.keys():
-			shutit.send('oc label node ' + machine + '.vagrant.test region=' + test_config_module.machines[machine]['region'])
 		shutit.send_until('oc get pods | grep ^router-','.*Running.*',cadence=30)
 		shutit.send_until('oc get pods | grep ^docker-registry-','.*Running.*',cadence=30)
 		shutit.pause_point('')
