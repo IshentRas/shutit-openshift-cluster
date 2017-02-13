@@ -14,9 +14,11 @@ class shutit_openshift_cluster(ShutItModule):
 		# Extract password from 'secret' file (which git ignores).
 		# TODO: check perms are only readable by user
 		try:
-			pw = file('secret').read()
+			pw = file('secret').read().strip()
 		except IOError:
 			pw = ''
+		if pw == '':
+			shutit.log('''WARNING! IF THIS DOES NOT WORK YOU MAY NEED TO SET UP A 'secret' FILE IN THIS FOLDER!''',level=logging.CRITICAL)
 		vagrant_image = shutit.cfg[self.module_id]['vagrant_image']
 		vagrant_provider = shutit.cfg[self.module_id]['vagrant_provider']
 		gui = shutit.cfg[self.module_id]['gui']
