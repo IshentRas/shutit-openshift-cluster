@@ -55,10 +55,7 @@ class shutit_openshift_cluster(ShutItModule):
 			shutit.install('net-tools')
 			shutit.install('git')
 			# Allow logins via ssh between machines
-			shutit.send('''sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config''',note='Allow logins between machines')
 			shutit.send('echo root:origin | /usr/sbin/chpasswd',note='set root password')
-			shutit.send('systemctl restart sshd',note='restart sshd')
-			shutit.install('epel-release')
 			shutit.send('rpm -i https://packages.chef.io/stable/el/7/chef-' + shutit.cfg[self.module_id]['chef_version'] + '.el7.x86_64.rpm',note='install chef')
 			shutit.send('mkdir -p /root/chef-solo-example /root/chef-solo-example/cookbooks /root/chef-solo-example/environments /root/chef-solo-example/logs',note='Create chef folders')
 			shutit.send('cd /root/chef-solo-example/cookbooks')
@@ -66,9 +63,6 @@ class shutit_openshift_cluster(ShutItModule):
 			if shutit.cfg[self.module_id]['inject_compat_resource']:                                                                                                                           
 				shutit.send("""echo "depends 'compat_resource'" >> cookbook-openshift3/metadata.rb""") 
 			# Filthy hack to 'override' the node['ipaddress'] value
-			ip_addr = shutit.send_and_get_output("""ip -4 addr show dev eth1 | grep inet | awk '{print $2}' | awk -F/ '{print $1}'""")
-			shutit.send('''sed -i 's/#{node..ipaddress..}/''' + ip_addr + '''/g' /root/chef-solo-example/cookbooks/cookbook-openshift3/attributes/default.rb''')
-			shutit.send("""sed -i "s/node..ipaddress../'""" + ip_addr + """'/g" /root/chef-solo-example/cookbooks/cookbook-openshift3/attributes/default.rb""")
 			if shutit.cfg[self.module_id]['chef_iptables_cookbook_version'] == 'latest':
 				shutit.send('curl -L https://supermarket.chef.io/cookbooks/iptables/download | tar -zxvf -',note='Get cookbook dependencies')
 			else:
@@ -97,7 +91,7 @@ class shutit_openshift_cluster(ShutItModule):
 		for machine in test_config_module.machines.keys():
 			shutit.login(command='vagrant ssh ' + machine)
 			shutit.login(command='sudo su - ')
-			shutit.send('echo "*/5 * * * * chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3],recipe[cookbook-openshift3::common],recipe[cookbook-openshift3::master],recipe[cookbook-openshift3::node] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1" | crontab',note='set up crontab on ' + machine)	
+			shutit.send('echo "*/5 * * * * chef-solo --environment ocp-cluster-environment -o recipe[cookbook-openshift3] -c ~/chef-solo-example/solo.rb >> /root/chef-solo-example/logs/chef.log 2>&1" | crontab',note='set up crontab on ' + machine)	
 			shutit.logout()
 			shutit.logout()
 	
