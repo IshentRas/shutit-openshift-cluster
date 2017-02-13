@@ -4,6 +4,7 @@ import string
 import os
 import jinja2
 import importlib
+import logging
 
 from shutit_module import ShutItModule
 
