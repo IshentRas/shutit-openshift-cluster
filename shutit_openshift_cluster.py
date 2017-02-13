@@ -43,7 +43,7 @@ class shutit_openshift_cluster(ShutItModule):
 		# SET UP MACHINES AND START CLUSTER
 		###############################################################################
 		for machine in sorted(test_config_module.machines.keys()):
-			ip = shutit.send_and_get_output('''vagrant landrush ls | grep -w ^''' + test_config_module.machines[machine]['fqdn'] + ''' | awk '{print $2}' ''')
+			ip = shutit.send_and_get_output('''vagrant landrush ls 2> /dev/null | grep -w ^''' + test_config_module.machines[machine]['fqdn'] + ''' | awk '{print $2}' ''')
 			test_config_module.machines.get(machine).update({'ip':ip})
 		for machine in test_config_module.machines.keys():
 			shutit.login(command='vagrant ssh ' + machine)
