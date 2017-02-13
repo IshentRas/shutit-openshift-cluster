@@ -11,6 +11,12 @@ class shutit_openshift_cluster(ShutItModule):
 
 
 	def build(self, shutit):
+		# Extract password from 'secret' file (which git ignores).
+		# TODO: check perms are only readable by user
+		try:
+			pw = file('secret').read()
+		except IOError:
+			pw = ''
 		vagrant_image = shutit.cfg[self.module_id]['vagrant_image']
 		vagrant_provider = shutit.cfg[self.module_id]['vagrant_provider']
 		gui = shutit.cfg[self.module_id]['gui']
@@ -24,15 +30,10 @@ class shutit_openshift_cluster(ShutItModule):
 		module_name = 'shutit_openshift_cluster_' + ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(6))
 		shutit.send('command rm -rf ' + run_dir + '/' + module_name + ' && command mkdir -p ' + run_dir + '/' + module_name + ' && command cd ' + run_dir + '/' + module_name)
 		if shutit.send_and_get_output('vagrant plugin list | grep landrush') == '':
-			shutit.send('vagrant plugin install landrush')
-		shutit.send('vagrant plugin install landrush')
-		shutit.send('vagrant init ' + vagrant_image)
+			shutit.multisend('vagrant plugin install landrush',{'assword':pw})
+		shutit.multisend('vagrant init ' + vagrant_image,{'assword':pw})
 		template = jinja2.Template(file(self_dir + '/tests/' + shutit.cfg[self.module_id]['test_config_dir'] + '/Vagrantfile').read())
 		shutit.send_file(run_dir + '/' + module_name + '/Vagrantfile',str(template.render(vagrant_image=vagrant_image,cfg=shutit.cfg[self.module_id])))
-		try:
-			pw = file('secret').read()
-		except:
-			pw = ''
 		for machine in test_config_module.machines.keys():
 			shutit.multisend('vagrant up --provider ' + shutit.cfg['shutit-library.virtualization.virtualization.virtualization']['virt_method'] + ' ' + machine,{'assword for':pw},timeout=99999)
 		###############################################################################
