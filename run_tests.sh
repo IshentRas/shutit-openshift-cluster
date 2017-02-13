@@ -17,6 +17,12 @@ else
 	cookbook_version="master"
 fi
 
+if [[ $OSE_VERSIONS = '' ]]
+then
+	OSE_VERSIONS='1.2 1.3 1.4'
+fi
+	
+
 if [[ ${QUICK:-0} = '1' ]]
 then
 	$SHUTIT build \
@@ -34,7 +40,7 @@ then
 		"$@"
 	./destroy_vms.sh
 else
-	for ose_major_version in 1.4 1.3 1.2
+	for ose_major_version in ${OSE_VERSIONS}
 	do
 		for test_dir in $(cd tests && find * -type d && cd - > /dev/null)
 		do
